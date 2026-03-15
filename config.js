@@ -13,7 +13,7 @@ const CONFIG = {
   // Set to 'mock'  → use sample-data.json (works offline / GitHub Pages).
   // Set to 'live'  → fetch from OREF API directly (requires same-origin or
   //                  a CORS proxy, because oref.org.il does not send CORS headers).
-  dataSource: 'mock',
+  dataSource: 'live',
 
   // ── Correct OREF endpoint (verified working) ──
   // Active / recent alerts (real-time, updates frequently):
