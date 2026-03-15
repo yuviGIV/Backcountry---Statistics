@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="פלטפורמת ניתוח היסטורי של נתוני התרעות פיקוד העורף — מחקר וסטטיסטיקה בלבד" />
+  <title>ניתוח היסטורי — התרעות פיקוד העורף</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <!-- Marker Cluster CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css" />
+
+  <!-- App CSS -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<!-- ── Loading Overlay ──────────────────────────────────────────────── -->
+<div id="loading-overlay" style="display:flex">
+  <div class="loading-inner">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">טוען נתונים היסטוריים…</div>
+  </div>
+</div>
+
+<!-- ── Error Toast ────────────────────────────────────────────────────── -->
+<div id="error-toast" class="toast toast-error" role="alert" aria-live="assertive">
+  <span class="toast-icon">⚠️</span>
+  <span class="toast-msg"></span>
+</div>
+
+<!-- ── App Shell ──────────────────────────────────────────────────────── -->
+<div class="app-shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" role="navigation" aria-label="ניווט ראשי">
+    <div class="sidebar-brand">
+      <span class="brand-icon">🛡️</span>
+      <div>
+        <div class="brand-title">ניתוח התרעות</div>
+        <div class="brand-sub">נתונים היסטוריים</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">ניתוח</div>
+      <a href="#" class="nav-link active" data-page="overview"   aria-current="page">
+        <span class="nav-icon">📊</span><span>סקירה כללית</span>
+      </a>
+      <a href="#" class="nav-link" data-page="operations">
+        <span class="nav-icon">⚔️</span><span>השוואת מבצעים</span>
+      </a>
+      <a href="#" class="nav-link" data-page="map">
+        <span class="nav-icon">🗺️</span><span>ניתוח מפה</span>
+      </a>
+      <a href="#" class="nav-link" data-page="regional">
+        <span class="nav-icon">📍</span><span>ניתוח אזורי</span>
+      </a>
+      <a href="#" class="nav-link" data-page="trends">
+        <span class="nav-icon">📈</span><span>מגמות היסטוריות</span>
+      </a>
+
+      <div class="nav-section-label nav-section-sep">מדדים</div>
+      <a href="#" class="nav-link nav-link-risk" data-page="risk">
+        <span class="nav-icon">🎯</span><span>מדד סיכון היסטורי</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div id="data-source-badge" class="data-badge">🟡 נתוני דמו</div>
+      <div id="filter-count" class="filter-count">— אירועים</div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <div class="main-content">
+
+    <!-- Top Bar -->
+    <header class="topbar" role="banner">
+      <button class="sidebar-toggle" id="sidebar-toggle" aria-label="תפריט">☰</button>
+      <div class="topbar-title">ניתוח היסטורי — נתוני התרעות פיקוד העורף</div>
+
+      <!-- Global Filters -->
+      <div class="filter-bar" role="search" aria-label="סינון נתונים">
+        <div class="filter-group">
+          <label class="filter-label" for="filter-start">מתאריך</label>
+          <input type="date" id="filter-start" class="filter-input" />
+        </div>
+        <div class="filter-group">
+          <label class="filter-label" for="filter-end">עד תאריך</label>
+          <input type="date" id="filter-end" class="filter-input" />
+        </div>
+        <div class="filter-group">
+          <label class="filter-label" for="filter-operation">מבצע</label>
+          <select id="filter-operation" class="filter-select">
+            <option value="all">כל המבצעים</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label" for="filter-region">אזור</label>
+          <select id="filter-region" class="filter-select">
+            <option value="all">כל האזורים</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label" for="filter-alerttype">סוג התרעה</label>
+          <select id="filter-alerttype" class="filter-select">
+            <option value="all">כל הסוגים</option>
+          </select>
+        </div>
+        <button id="btn-filter-reset" class="filter-reset-btn" title="אפס סינונים">↺ איפוס</button>
+      </div>
+    </header>
+
+    <!-- Pages -->
+    <main class="pages-container" role="main">
+
+      <!-- ── PAGE: Overview ─────────────────────────────────────────── -->
+      <section id="page-overview" class="page-section active">
+        <div class="page-header">
+          <h1 class="page-title">📊 סקירה כללית</h1>
+          <p class="page-subtitle">סיכום נתוני ההתרעות על פי הסינון הנוכחי</p>
+        </div>
+
+        <!-- KPI Row -->
+        <div class="kpi-grid">
+          <div class="kpi-card" id="kpi-total">
+            <div class="kpi-icon">📡</div>
+            <div class="kpi-value">—</div>
+            <div class="kpi-label">סך האירועים</div>
+          </div>
+          <div class="kpi-card" id="kpi-cities">
+            <div class="kpi-icon">🏙️</div>
+            <div class="kpi-value">—</div>
+            <div class="kpi-label">ערים מושפעות</div>
+          </div>
+          <div class="kpi-card" id="kpi-avgday">
+            <div class="kpi-icon">📅</div>
+            <div class="kpi-value">—</div>
+            <div class="kpi-label">ממוצע יומי</div>
+          </div>
+          <div class="kpi-card" id="kpi-peakhour">
+            <div class="kpi-icon">🕐</div>
+            <div class="kpi-value">—</div>
+            <div class="kpi-label">שעת שיא</div>
+          </div>
+        </div>
+
+        <!-- Charts Row 1 -->
+        <div class="charts-grid-2">
+          <div class="chart-card chart-card-wide">
+            <div class="chart-card-header">
+              <span class="chart-card-title">מגמת אירועים לאורך זמן (חודשי)</span>
+            </div>
+            <div class="chart-wrap" style="height:220px">
+              <canvas id="chart-trend"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <span class="chart-card-title">התפלגות לפי סוג התרעה</span>
+            </div>
+            <div class="chart-wrap" style="height:220px">
+              <canvas id="chart-types"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts Row 2 -->
+        <div class="charts-grid-2">
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <span class="chart-card-title">האזורים הפעילים ביותר</span>
+            </div>
+            <div class="chart-wrap" style="height:250px">
+              <canvas id="chart-topareas"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <span class="chart-card-title">התפלגות שעתית</span>
+            </div>
+            <div class="chart-wrap" style="height:250px">
+              <canvas id="chart-hourly"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Heatmap -->
+        <div class="chart-card">
+          <div class="chart-card-header">
+            <span class="chart-card-title">מפת חום — יום × שעה</span>
+            <span class="chart-card-sub">יום שבוע לעומת שעת ביום</span>
+          </div>
+          <div id="heatmap-grid" class="heatmap-container"></div>
+        </div>
+
+        <!-- Insights -->
+        <div class="insight-card">
+          <div class="insight-header">💡 תובנות אוטומטיות</div>
+          <ul id="insights-list" class="insights-list"></ul>
+        </div>
+      </section>
+
+      <!-- ── PAGE: Operations ───────────────────────────────────────── -->
+      <section id="page-operations" class="page-section" style="display:none">
+        <div class="page-header">
+          <h1 class="page-title">⚔️ השוואת מבצעים ותקופות</h1>
+          <p class="page-subtitle">השוואה נתונית בין מבצעים שונים</p>
+        </div>
+
+        <div id="ops-cards" class="ops-cards-grid"></div>
+
+        <div class="charts-grid-3">
+          <div class="chart-card chart-card-span2">
+            <div class="chart-card-header"><span class="chart-card-title">סה"כ אירועים למבצע</span></div>
+            <div class="chart-wrap" style="height:240px"><canvas id="chart-ops-compare"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-card-header"><span class="chart-card-title">פילוח אזורי</span></div>
+            <div class="chart-wrap" style="height:240px"><canvas id="chart-ops-regions"></canvas></div>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-card-header"><span class="chart-card-title">התפלגות שעתית השוואתית</span></div>
+          <div class="chart-wrap" style="height:250px"><canvas id="chart-ops-hourly"></canvas></div>
+        </div>
+      </section>
+
+      <!-- ── PAGE: Map ──────────────────────────────────────────────── -->
+      <section id="page-map" class="page-section" style="display:none">
+        <div class="page-header">
+          <h1 class="page-title">🗺️ ניתוח מפה</h1>
+          <p class="page-subtitle">מיפוי אירועים אינטראקטיבי — לפי הסינון הנוכחי</p>
+        </div>
+        <div class="map-layout">
+          <div id="leaflet-map" class="leaflet-map-container" aria-label="מפת ישראל עם סימוני אירועים"></div>
+          <div class="map-sidebar">
+            <div class="chart-card">
+              <div class="chart-card-header"><span class="chart-card-title">סטטיסטיקות מפה</span></div>
+              <div id="map-stats" class="map-stats-body"></div>
+            </div>
+            <div class="map-legend">
+              <div class="legend-title">מקרא</div>
+              <div id="map-legend-items" class="legend-items">
+                <!-- Populated by CSS / static -->
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Static legend items -->
+        <script>
+          document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('map-legend-items');
+            if (container && typeof APP_CONFIG !== 'undefined') {
+              container.innerHTML = APP_CONFIG.alertTypes.map(at =>
+                `<div class="legend-item">
+                   <span class="legend-dot" style="background:${at.color}"></span>
+                   <span>${at.icon} ${at.label}</span>
+                 </div>`
+              ).join('');
+            }
+          });
+        </script>
+      </section>
+
+      <!-- ── PAGE: Regional ─────────────────────────────────────────── -->
+      <section id="page-regional" class="page-section" style="display:none">
+        <div class="page-header">
+          <h1 class="page-title">📍 ניתוח אזורי</h1>
+          <p class="page-subtitle">דירוג אזורים וניתוח ריכוז אירועים</p>
+        </div>
+
+        <div class="charts-grid-2">
+          <div class="chart-card">
+            <div class="chart-card-header"><span class="chart-card-title">פילוח לפי אזור</span></div>
+            <div class="chart-wrap" style="height:240px"><canvas id="chart-regions-pie"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-card-header"><span class="chart-card-title">התפלגות יום בשבוע</span></div>
+            <div class="chart-wrap" style="height:240px"><canvas id="chart-dayofweek"></canvas></div>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-card-header">
+            <span class="chart-card-title">דירוג אזורים — עד 20 מובילים</span>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table" aria-label="דירוג אזורים">
+              <thead>
+                <tr>
+                  <th>#</th><th>אזור</th><th>אירועים</th><th>אחוז</th>
+                  <th>שעת שיא</th><th>סוג נפוץ</th><th>ערים</th>
+                </tr>
+              </thead>
+              <tbody id="regional-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── PAGE: Trends ───────────────────────────────────────────── -->
+      <section id="page-trends" class="page-section" style="display:none">
+        <div class="page-header">
+          <h1 class="page-title">📈 מגמות היסטוריות</h1>
+          <p class="page-subtitle">ניתוח סדרות זמן, ממוצעים נעים ואנומליות</p>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-card-header">
+            <span class="chart-card-title">אירועים יומיים + ממוצע נע</span>
+            <span class="chart-card-sub">
+              <span class="legend-pill" style="background:rgba(74,144,217,0.45)">אירועים</span>
+              <span class="legend-pill" style="background:#f0a500">ממוצע נע 7 ימים</span>
+              <span class="legend-pill" style="background:rgba(224,82,82,0.85)">חריגה</span>
+            </span>
+          </div>
+          <div class="chart-wrap" style="height:260px"><canvas id="chart-daily-trend"></canvas></div>
+        </div>
+
+        <div class="charts-grid-2">
+          <div class="chart-card">
+            <div class="chart-card-header"><span class="chart-card-title">אירועים שבועיים</span></div>
+            <div class="chart-wrap" style="height:220px"><canvas id="chart-weekly"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <span class="chart-card-title">חריגות שזוהו</span>
+              <span class="chart-card-sub">סף: ממוצע + 2.5σ</span>
+            </div>
+            <div id="anomaly-list" class="anomaly-list"></div>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-card-header">
+            <span class="chart-card-title">מטריצת סוג התרעה × שעה ביום</span>
+          </div>
+          <div id="hour-type-matrix" class="htmatrix-container"></div>
+        </div>
+      </section>
+
+      <!-- ── PAGE: Risk Index ───────────────────────────────────────── -->
+      <section id="page-risk" class="page-section" style="display:none">
+        <div class="page-header">
+          <h1 class="page-title">🎯 מדד סיכון היסטורי</h1>
+          <p class="page-subtitle">ניתוח תדירות התרעות על סמך נתוני עבר בלבד</p>
+        </div>
+
+        <!-- Safety Disclaimer — Always Visible -->
+        <div class="disclaimer-banner" role="alert">
+          <div class="disclaimer-icon">⚠️</div>
+          <div>
+            <strong>הצהרת אחריות — חובה לקרוא</strong><br />
+            <em id="disclaimer-text">מדד זה מבוסס על נתוני עבר בלבד ואינו מהווה תחזית או כלי לקבלת החלטות בזמן אמת.</em>
+          </div>
+        </div>
+
+        <div class="risk-layout">
+          <!-- Input Form -->
+          <div class="chart-card risk-form-card">
+            <div class="chart-card-header"><span class="chart-card-title">הגדרת שאילתה</span></div>
+            <form id="risk-form" class="risk-form" novalidate>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="risk-area">אזור / עיר / מחוז</label>
+                  <select id="risk-area" class="filter-select">
+                    <option value="all">כל האזורים</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="risk-start">מתאריך</label>
+                  <input type="date" id="risk-start" class="filter-input" />
+                </div>
+                <div class="form-group">
+                  <label for="risk-end">עד תאריך</label>
+                  <input type="date" id="risk-end" class="filter-input" />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="risk-hour-start">שעה מ</label>
+                  <select id="risk-hour-start" class="filter-select">
+                    <option value="">כל שעה</option>
+                    <script>
+                      for(let h=0;h<24;h++){
+                        document.write(`<option value="${h}">${h}:00</option>`);
+                      }
+                    </script>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="risk-hour-end">שעה עד</label>
+                  <select id="risk-hour-end" class="filter-select">
+                    <option value="">כל שעה</option>
+                    <script>
+                      for(let h=0;h<24;h++){
+                        document.write(`<option value="${h}">${h}:00</option>`);
+                      }
+                    </script>
+                  </select>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="risk-alerttype">סוג התרעה</label>
+                  <select id="risk-alerttype" class="filter-select">
+                    <option value="all">כל הסוגים</option>
+                  </select>
+                </div>
+              </div>
+              <button type="submit" class="btn-primary">חשב מדד סיכון היסטורי</button>
+            </form>
+          </div>
+
+          <!-- Result Panel -->
+          <div id="risk-result-panel" class="risk-result-panel" style="display:none">
+            <div class="chart-card">
+              <div class="chart-card-header"><span class="chart-card-title">תוצאה — מדד סיכון היסטורי</span></div>
+
+              <!-- Gauge -->
+              <div class="gauge-wrap">
+                <svg class="gauge-svg" viewBox="0 0 100 100" aria-hidden="true">
+                  <circle class="gauge-bg" cx="50" cy="50" r="45"
+                    fill="none" stroke-width="8" />
+                  <circle id="risk-gauge-ring" class="gauge-ring" cx="50" cy="50" r="45"
+                    fill="none" stroke-width="8"
+                    stroke-dasharray="0 283"
+                    stroke-linecap="round"
+                    transform="rotate(-90 50 50)" />
+                </svg>
+                <div class="gauge-label">
+                  <div id="risk-gauge-value" class="gauge-value">—</div>
+                  <div class="gauge-title">מדד סיכון היסטורי</div>
+                </div>
+              </div>
+
+              <!-- Stats -->
+              <div class="risk-stats-grid">
+                <div class="risk-stat"><div id="risk-count" class="risk-stat-val">—</div><div class="risk-stat-lbl">אירועים תואמים</div></div>
+                <div class="risk-stat"><div id="risk-days-range" class="risk-stat-val">—</div><div class="risk-stat-lbl">ימי טווח</div></div>
+                <div class="risk-stat"><div id="risk-days-alert" class="risk-stat-val">—</div><div class="risk-stat-lbl">ימים עם התרעה</div></div>
+              </div>
+
+              <!-- Formula -->
+              <div class="formula-box">
+                <div class="formula-title">נוסחת החישוב</div>
+                <div id="risk-formula" class="formula-text"></div>
+                <div id="risk-confidence" class="confidence-text"></div>
+              </div>
+
+              <!-- Sparse Warning -->
+              <div id="risk-sparse-warning" class="sparse-warning" style="display:none">
+                ⚠️ <strong>נתונים דלילים:</strong> פחות מ-10 אירועים תואמים — המדד אינו מהימן.
+              </div>
+
+              <!-- Mini Trend -->
+              <div class="chart-card-header" style="margin-top:16px"><span class="chart-card-title">מגמה חודשית לאזור</span></div>
+              <div class="chart-wrap" style="height:160px"><canvas id="chart-risk-trend"></canvas></div>
+
+              <!-- Disclaimer repeat -->
+              <div class="disclaimer-mini">
+                <strong>⚠️ מדד זה מבוסס על נתוני עבר בלבד ואינו מהווה תחזית
+                או כלי לקבלת החלטות בזמן אמת.</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Methodology card -->
+        <div class="chart-card methodology-card">
+          <div class="chart-card-header"><span class="chart-card-title">📖 מתודולוגיה ומגבלות</span></div>
+          <div class="methodology-text">
+            <p><strong>מה המדד מחשב?</strong> שיעור הימים בתקופה הנבחרת שבהם נרשמה לפחות התרעה אחת התואמת את הסינון.</p>
+            <p><strong>נוסחה:</strong> ימים עם התרעה ÷ סך הימים בטווח × 100</p>
+            <p><strong>מגבלות קריטיות:</strong></p>
+            <ul>
+              <li>המדד משקף תדירות עבר בלבד — אין בו כל ערך ניבוי.</li>
+              <li>שינויים מצבים, פוליטיים או ביטחוניים אינם מיוצגים.</li>
+              <li>נתוני הדגמה הם סינתטיים ואינם מייצגים מציאות מבצעית.</li>
+              <li>אין להשתמש במדד כלי לקבלת החלטות בזמן אמת.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+    </main><!-- /pages-container -->
+  </div><!-- /main-content -->
+</div><!-- /app-shell -->
+
+<!-- ── Scripts ──────────────────────────────────────────────────────── -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="config.js"></script>
+<script src="data-service.js"></script>
+<script src="analytics.js"></script>
+<script src="app.js"></script>
+
+<script>
+  // Set disclaimer text from config
+  document.addEventListener('DOMContentLoaded', () => {
+    const el = document.getElementById('disclaimer-text');
+    if (el && typeof APP_CONFIG !== 'undefined') {
+      el.textContent = APP_CONFIG.riskIndexDisclaimer;
+    }
+  });
+</script>
+</body>
+</html>
