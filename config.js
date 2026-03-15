@@ -13,7 +13,7 @@ const APP_CONFIG = {
   // ─── DATA SOURCE ─────────────────────────────────────────────────────────
   // 'mock'  → loads sample-data.json (works offline, GitHub Pages safe)
   // 'live'  → attempts fetch from liveApiUrl, falls back to mock on failure
-  dataMode: 'mock',
+  dataMode: 'live',
 
   liveApiUrl: 'https://www.oref.org.il/api/alerts/history',
   sampleDataPath: './sample-data.json',
