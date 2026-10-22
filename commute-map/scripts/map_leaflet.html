@@ -1,0 +1,245 @@
+<title>מפת תחנות שנקר ונתניה</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700&family=Assistant:wght@400;600&display=swap">
+<style>/*LEAFLETCSS*/</style>
+<style>
+/* Layout: real street map (Leaflet + bundled OSM tiles) beside a detail panel, then a ranked list of transfer-friendly stops. */
+:root {
+  --bg: #f3f5f4;
+  --surface: #ffffff;
+  --fg: #1c2a2b;
+  --muted: #5b6b6c;
+  --line: #d6dddc;
+  --reach: #2f6f9f;
+  --link: #1f8a5b;
+  --exact: #d98a0b;
+  --work: #c2562b;
+  --tiles: none;
+  --font-display: "Rubik", "Arial Hebrew", Arial, sans-serif;
+  --font-body: "Assistant", "Arial Hebrew", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101a1b; --surface: #182627; --fg: #e4eceb; --muted: #94a7a8; --line: #2c3f40;
+    --reach: #6aaee0; --link: #4fc891; --exact: #f2b441; --work: #f08a5d;
+    --tiles: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101a1b; --surface: #182627; --fg: #e4eceb; --muted: #94a7a8; --line: #2c3f40;
+  --reach: #6aaee0; --link: #4fc891; --exact: #f2b441; --work: #f08a5d;
+  --tiles: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9); color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 16px; line-height: 1.5;
+  padding-block: 20px 32px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+h1 { font-family: var(--font-display); font-size: clamp(1.5rem, 4.5vw, 2rem); line-height: 1.2; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--font-display); font-size: 1.1rem; margin: 0 0 8px; text-wrap: balance; }
+.sub { color: var(--muted); margin: 6px 0 0; max-width: 65ch; }
+.facts { display: flex; flex-wrap: wrap; gap: 8px 16px; color: var(--muted); font-size: 0.9rem; margin: 10px 0 0; padding: 0; list-style: none; }
+.main { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+.mapbox { flex: 2 1 420px; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.panel { flex: 1 1 280px; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 8px; font-size: 0.95rem; }
+.controls label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+#map { height: min(68vh, 560px); min-height: 340px; border-radius: 6px; background: var(--bg); direction: ltr; }
+#map .leaflet-tile-pane { filter: var(--tiles); }
+#map .leaflet-container, #map { font-family: var(--font-body); }
+.leaflet-control-attribution { font-size: 11px; }
+.leaflet-tooltip { font-family: var(--font-body); font-size: 0.85rem; direction: rtl; }
+.leaflet-interactive:focus-visible { outline: none; stroke: var(--fg); stroke-width: 3; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.85rem; color: var(--muted); margin-top: 8px; }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+.sw { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+.sw.sq { border-radius: 2px; }
+.sw.ring { background: transparent !important; border: 2px solid var(--work); width: 9px; height: 9px; }
+.pname { font-family: var(--font-display); font-size: 1.15rem; margin: 0; }
+.pcity { color: var(--muted); margin: 0 0 12px; }
+.block { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 10px; }
+.block h3 { margin: 0 0 4px; font-size: 0.8rem; letter-spacing: 0.04em; color: var(--muted); font-weight: 600; }
+.lines { font-weight: 600; overflow-wrap: anywhere; }
+.num { font-variant-numeric: tabular-nums; }
+.tag { display: inline-block; font-size: 0.8rem; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--exact); color: var(--exact); margin-inline-start: 6px; }
+a { color: var(--reach); }
+button.linkish { font: inherit; color: var(--reach); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
+button.linkish:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+.list { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 0.95rem; }
+th, td { text-align: right; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td:nth-child(2), td:nth-child(5) { white-space: nowrap; }
+th { color: var(--muted); font-weight: 600; font-size: 0.8rem; white-space: nowrap; }
+tr.row { cursor: pointer; }
+tr.row:hover td, tr.row.on td { background: color-mix(in srgb, var(--link) 10%, transparent); }
+tr.row:focus-visible { outline: 2px solid var(--fg); outline-offset: -2px; }
+.note { color: var(--muted); font-size: 0.85rem; max-width: 70ch; margin: 10px 0 0; }
+</style>
+
+<div class="wrap" dir="rtl" lang="he">
+  <header>
+    <h1>מפת תחנות שנקר ונתניה</h1>
+    <p class="sub">תחנות שמגיעות לביאליק/תובל ברמת גן בנסיעה של עד 15 דקות, ואילו מהן קרובות לקו שממשיך לעבודה בנתניה.</p>
+    <ul class="facts">
+      <li>יום ראשון 25.10.2026</li>
+      <li>יציאה בין 7:00 ל-9:00</li>
+      <li>יעד העבודה: מכללת הרמלין/המחקר, נתניה</li>
+      <li>חיבור: אותה תחנה או עד 400 מ' הליכה</li>
+    </ul>
+  </header>
+
+  <section class="main">
+    <div class="mapbox">
+      <div class="controls">
+        <label for="f-link"><input type="checkbox" id="f-link"> רק תחנות עם קו לעבודה</label>
+        <label for="f-exact"><input type="checkbox" id="f-exact"> רק באותה תחנה בדיוק</label>
+        <label for="f-work"><input type="checkbox" id="f-work" checked> הצג תחנות של קווי העבודה</label>
+        <button type="button" class="linkish" id="fit">הצג הכול</button>
+      </div>
+      <div id="map" role="application" aria-label="מפת תחנות"></div>
+      <div class="legend">
+        <span><i class="sw sq" style="background:var(--work)"></i>שנקר</span>
+        <span><i class="sw" style="background:var(--exact)"></i>אותה תחנה לשנקר ולעבודה</span>
+        <span><i class="sw" style="background:var(--link)"></i>לשנקר, ולעבודה בהליכה עד 400 מ'</span>
+        <span><i class="sw" style="background:var(--reach)"></i>לשנקר בלבד</span>
+        <span><i class="sw ring"></i>יש ממנה קו ישיר לעבודה</span>
+      </div>
+    </div>
+    <aside class="panel" id="panel" aria-live="polite"></aside>
+  </section>
+
+  <section class="list">
+    <h2>תחנות עם חיבור לעבודה</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>תחנה</th><th>עיר</th><th>קו לשנקר</th><th>קו לעבודה</th><th>הליכה</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <p class="note">זמני הנסיעה הם חציון של הנסיעות שיוצאות בין 7:00 ל-9:00 מנתוני GTFS של משרד התחבורה. הזמנים לא כוללים המתנה בתחנה. מרחק ההליכה נמדד בקו אווירי. רקע המפה: © תורמי OpenStreetMap.</p>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script>
+const D = /*DATA*/[];
+const W = /*WORK*/[];
+const SHENKAR = { lat: 32.0884, lon: 34.8046 };
+const WORKDEST = { lat: 32.29105, lon: 34.86494 };
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const isExact = d => d.matches.some(m => m.dist === 0);
+const isLinked = d => d.matches.length > 0;
+const colorOf = d => isExact(d) ? css('--exact') : isLinked(d) ? css('--link') : css('--reach');
+const gm = (lat, lon) => 'https://www.google.com/maps?q=' + lat + ',' + lon;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let selected = null;
+
+const map = L.map('map', { minZoom: 11, maxZoom: 17, zoomSnap: 0.5, attributionControl: true,
+  maxBounds: [[31.95, 34.65], [32.4, 35.0]] });
+// tiles ship with the page; beyond z15 Leaflet upscales the z15 tiles
+L.tileLayer('tiles/{z}/{x}/{y}.png', { minZoom: 11, maxZoom: 17, maxNativeZoom: 15,
+  attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' }).addTo(map);
+map.attributionControl.setPrefix(false);
+
+const workLayer = L.layerGroup().addTo(map);
+const stopLayer = L.layerGroup().addTo(map);
+const selLayer = L.layerGroup().addTo(map);
+
+W.forEach(w => {
+  L.circleMarker([w.lat, w.lon], { radius: 6, color: css('--work'), weight: 2, fill: false })
+    .bindTooltip(esc(w.name) + '<br>לעבודה: ' + esc(w.lines) + ', כ-' + Math.round(w.med) + ' דק\'', { direction: 'top' })
+    .addTo(workLayer);
+});
+
+function sq(lat, lon, label) {
+  return L.marker([lat, lon], { keyboard: false, icon: L.divIcon({ className: '', iconSize: [16, 16],
+    html: '<div style="width:16px;height:16px;border-radius:2px;background:' + css('--work') + ';border:2px solid ' + css('--surface') + ';box-sizing:border-box"></div>' }) })
+    .bindTooltip(label, { permanent: true, direction: 'top', offset: [0, -8] });
+}
+sq(SHENKAR.lat, SHENKAR.lon, 'שנקר').addTo(map);
+sq(WORKDEST.lat, WORKDEST.lon, 'העבודה, נתניה').addTo(map);
+
+function drawStops() {
+  stopLayer.clearLayers();
+  const onlyLink = document.getElementById('f-link').checked, onlyExact = document.getElementById('f-exact').checked;
+  const shown = D.filter(d => (!onlyLink || isLinked(d)) && (!onlyExact || isExact(d)));
+  // draw plain stops first so linked ones sit on top
+  shown.sort((a, b) => isLinked(a) - isLinked(b) || isExact(a) - isExact(b));
+  shown.forEach(d => {
+    const on = selected === d;
+    const m = L.circleMarker([d.lat, d.lon], { radius: isLinked(d) ? 8 : 5.5, color: on ? css('--fg') : css('--surface'),
+      weight: on ? 3 : 1.5, fillColor: colorOf(d), fillOpacity: 1 })
+      .bindTooltip(esc(d.name), { direction: 'top' })
+      .on('click', () => select(d));
+    m.addTo(stopLayer);
+  });
+  if (document.getElementById('f-work').checked) workLayer.addTo(map); else workLayer.remove();
+}
+
+function drawSelection() {
+  selLayer.clearLayers();
+  const d = selected;
+  if (!d) return;
+  d.matches.filter(m => m.dist > 0).slice(0, 3).forEach(m => {
+    L.polyline([[d.lat, d.lon], [m.lat, m.lon]], { color: css('--link'), weight: 3, dashArray: '4 6', interactive: false }).addTo(selLayer);
+    L.circleMarker([m.lat, m.lon], { radius: 6, color: css('--work'), weight: 3, fillColor: css('--surface'), fillOpacity: 1 })
+      .bindTooltip(esc(m.b) + ' (' + m.dist + ' מ\')', { direction: 'top' }).addTo(selLayer);
+  });
+}
+
+function select(d, fly) {
+  selected = d;
+  drawStops(); drawSelection(); renderPanel();
+  document.querySelectorAll('tr.row').forEach(tr => tr.classList.toggle('on', +tr.dataset.id === d.id));
+  if (fly) map.setView([d.lat, d.lon], Math.max(map.getZoom(), 15));
+}
+
+function renderPanel() {
+  const p = document.getElementById('panel');
+  const d = selected;
+  if (!d) { p.innerHTML = '<p class="pcity">בחר תחנה במפה.</p>'; return; }
+  let h = '<h2 class="pname">' + esc(d.name) + (isExact(d) ? '<span class="tag">אותה תחנה</span>' : '') + '</h2>';
+  h += '<p class="pcity">' + esc(d.city) + '</p>';
+  h += '<div class="block"><h3>לשנקר, ביאליק/תובל</h3><div class="lines">' + esc(d.lines) + '</div>' +
+       '<div class="num">כ-' + Math.round(d.med) + ' דק\' נסיעה, ' + d.trips + ' נסיעות בין 7:00 ל-9:00</div></div>';
+  if (d.matches.length) {
+    d.matches.slice(0, 3).forEach(m => {
+      h += '<div class="block"><h3>לעבודה, ' + (m.dist === 0 ? 'מאותה תחנה' : 'הליכה של ' + m.dist + ' מ\' אל ' + esc(m.b)) + '</h3><div class="lines">' + esc(m.lines) + '</div>' +
+           '<div class="num">כ-' + Math.round(m.med) + ' דק\' נסיעה, ' + m.trips + ' נסיעות</div></div>';
+    });
+  } else {
+    h += '<div class="block"><h3>לעבודה</h3><div>אין קו ישיר להרמלין/המחקר מתחנה זו או מתחנה במרחק של עד 400 מ\'.</div></div>';
+  }
+  h += '<div class="block"><a href="' + gm(d.lat, d.lon) + '" target="_blank" rel="noopener">פתח במפות גוגל</a></div>';
+  p.innerHTML = h;
+}
+
+function renderRows() {
+  const rows = D.filter(isLinked).map(d => ({ d, best: d.matches[0] }));
+  rows.sort((a, b) => (isExact(b.d) - isExact(a.d)) || (a.best.med - b.best.med));
+  const tb = document.getElementById('rows');
+  tb.innerHTML = '';
+  rows.forEach(({ d, best }) => {
+    const tr = document.createElement('tr');
+    tr.className = 'row'; tr.tabIndex = 0; tr.dataset.id = d.id;
+    tr.innerHTML = '<td>' + esc(d.name) + (isExact(d) ? '<span class="tag">אותה תחנה</span>' : '') + '</td><td>' + esc(d.city) + '</td>' +
+      '<td><span class="lines">' + esc(d.lines) + '</span><br><span class="num">כ-' + Math.round(d.med) + ' דק\'</span></td>' +
+      '<td><span class="lines">' + esc(best.lines) + '</span><br><span class="num">כ-' + Math.round(best.med) + ' דק\'</span></td>' +
+      '<td class="num">' + (best.dist === 0 ? 'אין' : best.dist + ' מ\'') + '</td>';
+    tr.addEventListener('click', () => { select(d, true); document.getElementById('map').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+    tr.addEventListener('keydown', e => { if (e.key === 'Enter') select(d, true); });
+    tb.appendChild(tr);
+  });
+}
+
+const cityBounds = L.latLngBounds(D.filter(isLinked).map(d => [d.lat, d.lon]).concat([[SHENKAR.lat, SHENKAR.lon]])).pad(0.15);
+function fitAll() { map.fitBounds(cityBounds); }
+['f-link', 'f-exact', 'f-work'].forEach(id => document.getElementById(id).addEventListener('change', drawStops));
+document.getElementById('fit').addEventListener('click', fitAll);
+// re-color markers when the theme flips
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { drawStops(); drawSelection(); });
+new MutationObserver(() => { drawStops(); drawSelection(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+fitAll();
+renderRows();
+select(D.find(isExact) || D.find(isLinked) || D[0]);
+</script>

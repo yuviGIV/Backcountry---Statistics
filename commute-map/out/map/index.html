@@ -1,0 +1,906 @@
+<title>מפת תחנות שנקר ונתניה</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700&family=Assistant:wght@400;600&display=swap">
+<style>/* required styles */
+
+.leaflet-pane,
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-tile-container,
+.leaflet-pane > svg,
+.leaflet-pane > canvas,
+.leaflet-zoom-box,
+.leaflet-image-layer,
+.leaflet-layer {
+	position: absolute;
+	left: 0;
+	top: 0;
+	}
+.leaflet-container {
+	overflow: hidden;
+	}
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+	-webkit-user-select: none;
+	   -moz-user-select: none;
+	        user-select: none;
+	  -webkit-user-drag: none;
+	}
+/* Prevents IE11 from highlighting tiles in blue */
+.leaflet-tile::selection {
+	background: transparent;
+}
+/* Safari renders non-retina tile on retina better with this, but Chrome is worse */
+.leaflet-safari .leaflet-tile {
+	image-rendering: -webkit-optimize-contrast;
+	}
+/* hack that prevents hw layers "stretching" when loading new tiles */
+.leaflet-safari .leaflet-tile-container {
+	width: 1600px;
+	height: 1600px;
+	-webkit-transform-origin: 0 0;
+	}
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+	display: block;
+	}
+/* .leaflet-container svg: reset svg max-width decleration shipped in Joomla! (joomla.org) 3.x */
+/* .leaflet-container img: map is broken in FF if you have max-width: 100% on tiles */
+.leaflet-container .leaflet-overlay-pane svg {
+	max-width: none !important;
+	max-height: none !important;
+	}
+.leaflet-container .leaflet-marker-pane img,
+.leaflet-container .leaflet-shadow-pane img,
+.leaflet-container .leaflet-tile-pane img,
+.leaflet-container img.leaflet-image-layer,
+.leaflet-container .leaflet-tile {
+	max-width: none !important;
+	max-height: none !important;
+	width: auto;
+	padding: 0;
+	}
+
+.leaflet-container img.leaflet-tile {
+	/* See: https://bugs.chromium.org/p/chromium/issues/detail?id=600120 */
+	mix-blend-mode: plus-lighter;
+}
+
+.leaflet-container.leaflet-touch-zoom {
+	-ms-touch-action: pan-x pan-y;
+	touch-action: pan-x pan-y;
+	}
+.leaflet-container.leaflet-touch-drag {
+	-ms-touch-action: pinch-zoom;
+	/* Fallback for FF which doesn't support pinch-zoom */
+	touch-action: none;
+	touch-action: pinch-zoom;
+}
+.leaflet-container.leaflet-touch-drag.leaflet-touch-zoom {
+	-ms-touch-action: none;
+	touch-action: none;
+}
+.leaflet-container {
+	-webkit-tap-highlight-color: transparent;
+}
+.leaflet-container a {
+	-webkit-tap-highlight-color: rgba(51, 181, 229, 0.4);
+}
+.leaflet-tile {
+	filter: inherit;
+	visibility: hidden;
+	}
+.leaflet-tile-loaded {
+	visibility: inherit;
+	}
+.leaflet-zoom-box {
+	width: 0;
+	height: 0;
+	-moz-box-sizing: border-box;
+	     box-sizing: border-box;
+	z-index: 800;
+	}
+/* workaround for https://bugzilla.mozilla.org/show_bug.cgi?id=888319 */
+.leaflet-overlay-pane svg {
+	-moz-user-select: none;
+	}
+
+.leaflet-pane         { z-index: 400; }
+
+.leaflet-tile-pane    { z-index: 200; }
+.leaflet-overlay-pane { z-index: 400; }
+.leaflet-shadow-pane  { z-index: 500; }
+.leaflet-marker-pane  { z-index: 600; }
+.leaflet-tooltip-pane   { z-index: 650; }
+.leaflet-popup-pane   { z-index: 700; }
+
+.leaflet-map-pane canvas { z-index: 100; }
+.leaflet-map-pane svg    { z-index: 200; }
+
+.leaflet-vml-shape {
+	width: 1px;
+	height: 1px;
+	}
+.lvml {
+	behavior: url(#default#VML);
+	display: inline-block;
+	position: absolute;
+	}
+
+
+/* control positioning */
+
+.leaflet-control {
+	position: relative;
+	z-index: 800;
+	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */
+	pointer-events: auto;
+	}
+.leaflet-top,
+.leaflet-bottom {
+	position: absolute;
+	z-index: 1000;
+	pointer-events: none;
+	}
+.leaflet-top {
+	top: 0;
+	}
+.leaflet-right {
+	right: 0;
+	}
+.leaflet-bottom {
+	bottom: 0;
+	}
+.leaflet-left {
+	left: 0;
+	}
+.leaflet-control {
+	float: left;
+	clear: both;
+	}
+.leaflet-right .leaflet-control {
+	float: right;
+	}
+.leaflet-top .leaflet-control {
+	margin-top: 10px;
+	}
+.leaflet-bottom .leaflet-control {
+	margin-bottom: 10px;
+	}
+.leaflet-left .leaflet-control {
+	margin-left: 10px;
+	}
+.leaflet-right .leaflet-control {
+	margin-right: 10px;
+	}
+
+
+/* zoom and fade animations */
+
+.leaflet-fade-anim .leaflet-popup {
+	opacity: 0;
+	-webkit-transition: opacity 0.2s linear;
+	   -moz-transition: opacity 0.2s linear;
+	        transition: opacity 0.2s linear;
+	}
+.leaflet-fade-anim .leaflet-map-pane .leaflet-popup {
+	opacity: 1;
+	}
+.leaflet-zoom-animated {
+	-webkit-transform-origin: 0 0;
+	    -ms-transform-origin: 0 0;
+	        transform-origin: 0 0;
+	}
+svg.leaflet-zoom-animated {
+	will-change: transform;
+}
+
+.leaflet-zoom-anim .leaflet-zoom-animated {
+	-webkit-transition: -webkit-transform 0.25s cubic-bezier(0,0,0.25,1);
+	   -moz-transition:    -moz-transform 0.25s cubic-bezier(0,0,0.25,1);
+	        transition:         transform 0.25s cubic-bezier(0,0,0.25,1);
+	}
+.leaflet-zoom-anim .leaflet-tile,
+.leaflet-pan-anim .leaflet-tile {
+	-webkit-transition: none;
+	   -moz-transition: none;
+	        transition: none;
+	}
+
+.leaflet-zoom-anim .leaflet-zoom-hide {
+	visibility: hidden;
+	}
+
+
+/* cursors */
+
+.leaflet-interactive {
+	cursor: pointer;
+	}
+.leaflet-grab {
+	cursor: -webkit-grab;
+	cursor:    -moz-grab;
+	cursor:         grab;
+	}
+.leaflet-crosshair,
+.leaflet-crosshair .leaflet-interactive {
+	cursor: crosshair;
+	}
+.leaflet-popup-pane,
+.leaflet-control {
+	cursor: auto;
+	}
+.leaflet-dragging .leaflet-grab,
+.leaflet-dragging .leaflet-grab .leaflet-interactive,
+.leaflet-dragging .leaflet-marker-draggable {
+	cursor: move;
+	cursor: -webkit-grabbing;
+	cursor:    -moz-grabbing;
+	cursor:         grabbing;
+	}
+
+/* marker & overlays interactivity */
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-image-layer,
+.leaflet-pane > svg path,
+.leaflet-tile-container {
+	pointer-events: none;
+	}
+
+.leaflet-marker-icon.leaflet-interactive,
+.leaflet-image-layer.leaflet-interactive,
+.leaflet-pane > svg path.leaflet-interactive,
+svg.leaflet-image-layer.leaflet-interactive path {
+	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */
+	pointer-events: auto;
+	}
+
+/* visual tweaks */
+
+.leaflet-container {
+	background: #ddd;
+	outline-offset: 1px;
+	}
+.leaflet-container a {
+	color: #0078A8;
+	}
+.leaflet-zoom-box {
+	border: 2px dotted #38f;
+	background: rgba(255,255,255,0.5);
+	}
+
+
+/* general typography */
+.leaflet-container {
+	font-family: "Helvetica Neue", Arial, Helvetica, sans-serif;
+	font-size: 12px;
+	font-size: 0.75rem;
+	line-height: 1.5;
+	}
+
+
+/* general toolbar styles */
+
+.leaflet-bar {
+	box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+	border-radius: 4px;
+	}
+.leaflet-bar a {
+	background-color: #fff;
+	border-bottom: 1px solid #ccc;
+	width: 26px;
+	height: 26px;
+	line-height: 26px;
+	display: block;
+	text-align: center;
+	text-decoration: none;
+	color: black;
+	}
+.leaflet-bar a,
+.leaflet-control-layers-toggle {
+	background-position: 50% 50%;
+	background-repeat: no-repeat;
+	display: block;
+	}
+.leaflet-bar a:hover,
+.leaflet-bar a:focus {
+	background-color: #f4f4f4;
+	}
+.leaflet-bar a:first-child {
+	border-top-left-radius: 4px;
+	border-top-right-radius: 4px;
+	}
+.leaflet-bar a:last-child {
+	border-bottom-left-radius: 4px;
+	border-bottom-right-radius: 4px;
+	border-bottom: none;
+	}
+.leaflet-bar a.leaflet-disabled {
+	cursor: default;
+	background-color: #f4f4f4;
+	color: #bbb;
+	}
+
+.leaflet-touch .leaflet-bar a {
+	width: 30px;
+	height: 30px;
+	line-height: 30px;
+	}
+.leaflet-touch .leaflet-bar a:first-child {
+	border-top-left-radius: 2px;
+	border-top-right-radius: 2px;
+	}
+.leaflet-touch .leaflet-bar a:last-child {
+	border-bottom-left-radius: 2px;
+	border-bottom-right-radius: 2px;
+	}
+
+/* zoom control */
+
+.leaflet-control-zoom-in,
+.leaflet-control-zoom-out {
+	font: bold 18px 'Lucida Console', Monaco, monospace;
+	text-indent: 1px;
+	}
+
+.leaflet-touch .leaflet-control-zoom-in, .leaflet-touch .leaflet-control-zoom-out  {
+	font-size: 22px;
+	}
+
+
+/* layers control */
+
+.leaflet-control-layers {
+	box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+	background: #fff;
+	border-radius: 5px;
+	}
+.leaflet-control-layers-toggle {
+	background-image: url(images/layers.png);
+	width: 36px;
+	height: 36px;
+	}
+.leaflet-retina .leaflet-control-layers-toggle {
+	background-image: url(images/layers-2x.png);
+	background-size: 26px 26px;
+	}
+.leaflet-touch .leaflet-control-layers-toggle {
+	width: 44px;
+	height: 44px;
+	}
+.leaflet-control-layers .leaflet-control-layers-list,
+.leaflet-control-layers-expanded .leaflet-control-layers-toggle {
+	display: none;
+	}
+.leaflet-control-layers-expanded .leaflet-control-layers-list {
+	display: block;
+	position: relative;
+	}
+.leaflet-control-layers-expanded {
+	padding: 6px 10px 6px 6px;
+	color: #333;
+	background: #fff;
+	}
+.leaflet-control-layers-scrollbar {
+	overflow-y: scroll;
+	overflow-x: hidden;
+	padding-right: 5px;
+	}
+.leaflet-control-layers-selector {
+	margin-top: 2px;
+	position: relative;
+	top: 1px;
+	}
+.leaflet-control-layers label {
+	display: block;
+	font-size: 13px;
+	font-size: 1.08333em;
+	}
+.leaflet-control-layers-separator {
+	height: 0;
+	border-top: 1px solid #ddd;
+	margin: 5px -10px 5px -6px;
+	}
+
+/* Default icon URLs */
+.leaflet-default-icon-path { /* used only in path-guessing heuristic, see L.Icon.Default */
+	background-image: url(images/marker-icon.png);
+	}
+
+
+/* attribution and scale controls */
+
+.leaflet-container .leaflet-control-attribution {
+	background: #fff;
+	background: rgba(255, 255, 255, 0.8);
+	margin: 0;
+	}
+.leaflet-control-attribution,
+.leaflet-control-scale-line {
+	padding: 0 5px;
+	color: #333;
+	line-height: 1.4;
+	}
+.leaflet-control-attribution a {
+	text-decoration: none;
+	}
+.leaflet-control-attribution a:hover,
+.leaflet-control-attribution a:focus {
+	text-decoration: underline;
+	}
+.leaflet-attribution-flag {
+	display: inline !important;
+	vertical-align: baseline !important;
+	width: 1em;
+	height: 0.6669em;
+	}
+.leaflet-left .leaflet-control-scale {
+	margin-left: 5px;
+	}
+.leaflet-bottom .leaflet-control-scale {
+	margin-bottom: 5px;
+	}
+.leaflet-control-scale-line {
+	border: 2px solid #777;
+	border-top: none;
+	line-height: 1.1;
+	padding: 2px 5px 1px;
+	white-space: nowrap;
+	-moz-box-sizing: border-box;
+	     box-sizing: border-box;
+	background: rgba(255, 255, 255, 0.8);
+	text-shadow: 1px 1px #fff;
+	}
+.leaflet-control-scale-line:not(:first-child) {
+	border-top: 2px solid #777;
+	border-bottom: none;
+	margin-top: -2px;
+	}
+.leaflet-control-scale-line:not(:first-child):not(:last-child) {
+	border-bottom: 2px solid #777;
+	}
+
+.leaflet-touch .leaflet-control-attribution,
+.leaflet-touch .leaflet-control-layers,
+.leaflet-touch .leaflet-bar {
+	box-shadow: none;
+	}
+.leaflet-touch .leaflet-control-layers,
+.leaflet-touch .leaflet-bar {
+	border: 2px solid rgba(0,0,0,0.2);
+	background-clip: padding-box;
+	}
+
+
+/* popup */
+
+.leaflet-popup {
+	position: absolute;
+	text-align: center;
+	margin-bottom: 20px;
+	}
+.leaflet-popup-content-wrapper {
+	padding: 1px;
+	text-align: left;
+	border-radius: 12px;
+	}
+.leaflet-popup-content {
+	margin: 13px 24px 13px 20px;
+	line-height: 1.3;
+	font-size: 13px;
+	font-size: 1.08333em;
+	min-height: 1px;
+	}
+.leaflet-popup-content p {
+	margin: 17px 0;
+	margin: 1.3em 0;
+	}
+.leaflet-popup-tip-container {
+	width: 40px;
+	height: 20px;
+	position: absolute;
+	left: 50%;
+	margin-top: -1px;
+	margin-left: -20px;
+	overflow: hidden;
+	pointer-events: none;
+	}
+.leaflet-popup-tip {
+	width: 17px;
+	height: 17px;
+	padding: 1px;
+
+	margin: -10px auto 0;
+	pointer-events: auto;
+
+	-webkit-transform: rotate(45deg);
+	   -moz-transform: rotate(45deg);
+	    -ms-transform: rotate(45deg);
+	        transform: rotate(45deg);
+	}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+	background: white;
+	color: #333;
+	box-shadow: 0 3px 14px rgba(0,0,0,0.4);
+	}
+.leaflet-container a.leaflet-popup-close-button {
+	position: absolute;
+	top: 0;
+	right: 0;
+	border: none;
+	text-align: center;
+	width: 24px;
+	height: 24px;
+	font: 16px/24px Tahoma, Verdana, sans-serif;
+	color: #757575;
+	text-decoration: none;
+	background: transparent;
+	}
+.leaflet-container a.leaflet-popup-close-button:hover,
+.leaflet-container a.leaflet-popup-close-button:focus {
+	color: #585858;
+	}
+.leaflet-popup-scrolled {
+	overflow: auto;
+	}
+
+.leaflet-oldie .leaflet-popup-content-wrapper {
+	-ms-zoom: 1;
+	}
+.leaflet-oldie .leaflet-popup-tip {
+	width: 24px;
+	margin: 0 auto;
+
+	-ms-filter: "progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678)";
+	filter: progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678);
+	}
+
+.leaflet-oldie .leaflet-control-zoom,
+.leaflet-oldie .leaflet-control-layers,
+.leaflet-oldie .leaflet-popup-content-wrapper,
+.leaflet-oldie .leaflet-popup-tip {
+	border: 1px solid #999;
+	}
+
+
+/* div icon */
+
+.leaflet-div-icon {
+	background: #fff;
+	border: 1px solid #666;
+	}
+
+
+/* Tooltip */
+/* Base styles for the element that has a tooltip */
+.leaflet-tooltip {
+	position: absolute;
+	padding: 6px;
+	background-color: #fff;
+	border: 1px solid #fff;
+	border-radius: 3px;
+	color: #222;
+	white-space: nowrap;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+	pointer-events: none;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+	}
+.leaflet-tooltip.leaflet-interactive {
+	cursor: pointer;
+	pointer-events: auto;
+	}
+.leaflet-tooltip-top:before,
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+	position: absolute;
+	pointer-events: none;
+	border: 6px solid transparent;
+	background: transparent;
+	content: "";
+	}
+
+/* Directions */
+
+.leaflet-tooltip-bottom {
+	margin-top: 6px;
+}
+.leaflet-tooltip-top {
+	margin-top: -6px;
+}
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-top:before {
+	left: 50%;
+	margin-left: -6px;
+	}
+.leaflet-tooltip-top:before {
+	bottom: 0;
+	margin-bottom: -12px;
+	border-top-color: #fff;
+	}
+.leaflet-tooltip-bottom:before {
+	top: 0;
+	margin-top: -12px;
+	margin-left: -6px;
+	border-bottom-color: #fff;
+	}
+.leaflet-tooltip-left {
+	margin-left: -6px;
+}
+.leaflet-tooltip-right {
+	margin-left: 6px;
+}
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+	top: 50%;
+	margin-top: -6px;
+	}
+.leaflet-tooltip-left:before {
+	right: 0;
+	margin-right: -12px;
+	border-left-color: #fff;
+	}
+.leaflet-tooltip-right:before {
+	left: 0;
+	margin-left: -12px;
+	border-right-color: #fff;
+	}
+
+/* Printing */
+
+@media print {
+	/* Prevent printers from removing background-images of controls. */
+	.leaflet-control {
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
+		}
+	}
+</style>
+<style>
+/* Layout: real street map (Leaflet + bundled OSM tiles) beside a detail panel, then a ranked list of transfer-friendly stops. */
+:root {
+  --bg: #f3f5f4;
+  --surface: #ffffff;
+  --fg: #1c2a2b;
+  --muted: #5b6b6c;
+  --line: #d6dddc;
+  --reach: #2f6f9f;
+  --link: #1f8a5b;
+  --exact: #d98a0b;
+  --work: #c2562b;
+  --tiles: none;
+  --font-display: "Rubik", "Arial Hebrew", Arial, sans-serif;
+  --font-body: "Assistant", "Arial Hebrew", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101a1b; --surface: #182627; --fg: #e4eceb; --muted: #94a7a8; --line: #2c3f40;
+    --reach: #6aaee0; --link: #4fc891; --exact: #f2b441; --work: #f08a5d;
+    --tiles: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101a1b; --surface: #182627; --fg: #e4eceb; --muted: #94a7a8; --line: #2c3f40;
+  --reach: #6aaee0; --link: #4fc891; --exact: #f2b441; --work: #f08a5d;
+  --tiles: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9); color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 16px; line-height: 1.5;
+  padding-block: 20px 32px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+h1 { font-family: var(--font-display); font-size: clamp(1.5rem, 4.5vw, 2rem); line-height: 1.2; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--font-display); font-size: 1.1rem; margin: 0 0 8px; text-wrap: balance; }
+.sub { color: var(--muted); margin: 6px 0 0; max-width: 65ch; }
+.facts { display: flex; flex-wrap: wrap; gap: 8px 16px; color: var(--muted); font-size: 0.9rem; margin: 10px 0 0; padding: 0; list-style: none; }
+.main { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+.mapbox { flex: 2 1 420px; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.panel { flex: 1 1 280px; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 8px; font-size: 0.95rem; }
+.controls label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+#map { height: min(68vh, 560px); min-height: 340px; border-radius: 6px; background: var(--bg); direction: ltr; }
+#map .leaflet-tile-pane { filter: var(--tiles); }
+#map .leaflet-container, #map { font-family: var(--font-body); }
+.leaflet-control-attribution { font-size: 11px; }
+.leaflet-tooltip { font-family: var(--font-body); font-size: 0.85rem; direction: rtl; }
+.leaflet-interactive:focus-visible { outline: none; stroke: var(--fg); stroke-width: 3; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.85rem; color: var(--muted); margin-top: 8px; }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+.sw { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+.sw.sq { border-radius: 2px; }
+.sw.ring { background: transparent !important; border: 2px solid var(--work); width: 9px; height: 9px; }
+.pname { font-family: var(--font-display); font-size: 1.15rem; margin: 0; }
+.pcity { color: var(--muted); margin: 0 0 12px; }
+.block { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 10px; }
+.block h3 { margin: 0 0 4px; font-size: 0.8rem; letter-spacing: 0.04em; color: var(--muted); font-weight: 600; }
+.lines { font-weight: 600; overflow-wrap: anywhere; }
+.num { font-variant-numeric: tabular-nums; }
+.tag { display: inline-block; font-size: 0.8rem; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--exact); color: var(--exact); margin-inline-start: 6px; }
+a { color: var(--reach); }
+button.linkish { font: inherit; color: var(--reach); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
+button.linkish:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+.list { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 0.95rem; }
+th, td { text-align: right; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td:nth-child(2), td:nth-child(5) { white-space: nowrap; }
+th { color: var(--muted); font-weight: 600; font-size: 0.8rem; white-space: nowrap; }
+tr.row { cursor: pointer; }
+tr.row:hover td, tr.row.on td { background: color-mix(in srgb, var(--link) 10%, transparent); }
+tr.row:focus-visible { outline: 2px solid var(--fg); outline-offset: -2px; }
+.note { color: var(--muted); font-size: 0.85rem; max-width: 70ch; margin: 10px 0 0; }
+</style>
+
+<div class="wrap" dir="rtl" lang="he">
+  <header>
+    <h1>מפת תחנות שנקר ונתניה</h1>
+    <p class="sub">תחנות שמגיעות לביאליק/תובל ברמת גן בנסיעה של עד 15 דקות, ואילו מהן קרובות לקו שממשיך לעבודה בנתניה.</p>
+    <ul class="facts">
+      <li>יום ראשון 25.10.2026</li>
+      <li>יציאה בין 7:00 ל-9:00</li>
+      <li>יעד העבודה: מכללת הרמלין/המחקר, נתניה</li>
+      <li>חיבור: אותה תחנה או עד 400 מ' הליכה</li>
+    </ul>
+  </header>
+
+  <section class="main">
+    <div class="mapbox">
+      <div class="controls">
+        <label for="f-link"><input type="checkbox" id="f-link"> רק תחנות עם קו לעבודה</label>
+        <label for="f-exact"><input type="checkbox" id="f-exact"> רק באותה תחנה בדיוק</label>
+        <label for="f-work"><input type="checkbox" id="f-work" checked> הצג תחנות של קווי העבודה</label>
+        <button type="button" class="linkish" id="fit">הצג הכול</button>
+      </div>
+      <div id="map" role="application" aria-label="מפת תחנות"></div>
+      <div class="legend">
+        <span><i class="sw sq" style="background:var(--work)"></i>שנקר</span>
+        <span><i class="sw" style="background:var(--exact)"></i>אותה תחנה לשנקר ולעבודה</span>
+        <span><i class="sw" style="background:var(--link)"></i>לשנקר, ולעבודה בהליכה עד 400 מ'</span>
+        <span><i class="sw" style="background:var(--reach)"></i>לשנקר בלבד</span>
+        <span><i class="sw ring"></i>יש ממנה קו ישיר לעבודה</span>
+      </div>
+    </div>
+    <aside class="panel" id="panel" aria-live="polite"></aside>
+  </section>
+
+  <section class="list">
+    <h2>תחנות עם חיבור לעבודה</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>תחנה</th><th>עיר</th><th>קו לשנקר</th><th>קו לעבודה</th><th>הליכה</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <p class="note">זמני הנסיעה הם חציון של הנסיעות שיוצאות בין 7:00 ל-9:00 מנתוני GTFS של משרד התחבורה. הזמנים לא כוללים המתנה בתחנה. מרחק ההליכה נמדד בקו אווירי. רקע המפה: © תורמי OpenStreetMap.</p>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script>
+const D = [{"id": 12843, "name": "ויצמן/ז'בוטינסקי", "city": "גבעתיים", "lat": 32.073859, "lon": 34.80864, "trips": 10, "med": 10.9, "lines": "45 (דן)", "matches": []}, {"id": 12878, "name": "עיריית תל אביב-יפו/אבן גבירול", "city": "תל אביב יפו", "lat": 32.082493, "lon": 34.781427, "trips": 6, "med": 9.9, "lines": "21 (מטרופולין)", "matches": [{"b": "עיריית תל אביב-יפו/אבן גבירול", "lat": 32.082493, "lon": 34.781427, "lines": "608 (מטרופולין)", "med": 35.3, "trips": 7, "dist": 0.0}, {"b": "אבן גבירול/ארלוזורוב", "lat": 32.084898, "lon": 34.781789, "lines": "608 (מטרופולין)", "med": 34.6, "trips": 6, "dist": 270.0}, {"b": "כיכר רבין/אבן גבירול", "lat": 32.079138, "lon": 34.781405, "lines": "608 (מטרופולין)", "med": 36.8, "trips": 7, "dist": 373.0}]}, {"id": 12888, "name": "ויצמן/ריינס", "city": "גבעתיים", "lat": 32.067865, "lon": 34.808579, "trips": 10, "med": 12.9, "lines": "45 (דן)", "matches": []}, {"id": 12889, "name": "ת. רכבת תל אביב סבידור/על פרשת דרכים", "city": "תל אביב יפו", "lat": 32.082475, "lon": 34.795453, "trips": 3, "med": 5.6, "lines": "267 (דן)", "matches": [{"b": "ת. רכבת תל אביב - סבידור/דרך נמיר", "lat": 32.083482, "lon": 34.795008, "lines": "615 (מטרופולין), 606 (מטרופולין)", "med": 31.1, "trips": 10, "dist": 120.0}]}, {"id": 12927, "name": "ביה''ס אלומות/רדינג", "city": "תל אביב יפו", "lat": 32.108371, "lon": 34.79409, "trips": 8, "med": 8.9, "lines": "45 (דן)", "matches": []}, {"id": 12962, "name": "מחלף גבעת שמואל/כביש 4", "city": "גבעת שמואל", "lat": 32.076767, "lon": 34.844303, "trips": 8, "med": 13.8, "lines": "68 (מטרופולין)", "matches": []}, {"id": 13028, "name": "ראול ולנברג/הנחושת", "city": "תל אביב יפו", "lat": 32.109949, "lon": 34.837112, "trips": 6, "med": 12.9, "lines": "21 (מטרופולין)", "matches": [{"b": "ראול ולנברג/הנחושת", "lat": 32.1097, "lon": 34.837166, "lines": "616 (מטרופולין)", "med": 41.3, "trips": 1, "dist": 28.0}]}, {"id": 13029, "name": "ראול ולנברג/הארד", "city": "תל אביב יפו", "lat": 32.111693, "lon": 34.838729, "trips": 6, "med": 13.0, "lines": "21 (מטרופולין)", "matches": [{"b": "ראול ולנברג/הארד", "lat": 32.112816, "lon": 34.839688, "lines": "616 (מטרופולין)", "med": 40.1, "trips": 1, "dist": 154.0}, {"b": "ראול ולנברג/הנחושת", "lat": 32.1097, "lon": 34.837166, "lines": "616 (מטרופולין)", "med": 41.3, "trips": 1, "dist": 266.0}]}, {"id": 13032, "name": "דרך ז'בוטינסקי/דב גרונר", "city": "בני ברק", "lat": 32.091763, "lon": 34.828052, "trips": 27, "med": 7.2, "lines": "66 (דן), 68 (מטרופולין)", "matches": []}, {"id": 13052, "name": "חיים לבנון/קלצ'קין", "city": "תל אביב יפו", "lat": 32.117801, "lon": 34.801382, "trips": 8, "med": 12.9, "lines": "45 (דן)", "matches": []}, {"id": 13053, "name": "ת. רכבת בני ברק/מבצע קדש", "city": "בני ברק", "lat": 32.103618, "lon": 34.827642, "trips": 5, "med": 9.7, "lines": "21 (מטרופולין)", "matches": [{"b": "ת. רכבת בני ברק/מבצע קדש", "lat": 32.103514, "lon": 34.827868, "lines": "616 (מטרופולין)", "med": 44.4, "trips": 1, "dist": 24.0}]}, {"id": 13101, "name": "דרך ז'בוטינסקי/רש''י", "city": "רמת גן", "lat": 32.089649, "lon": 34.818457, "trips": 26, "med": 4.5, "lines": "68 (מטרופולין), 66 (דן)", "matches": []}, {"id": 13188, "name": "גשר בר אילן/כביש 4", "city": "רמת גן", "lat": 32.066814, "lon": 34.839819, "trips": 8, "med": 14.5, "lines": "68 (מטרופולין)", "matches": []}, {"id": 13205, "name": "קניון רמת אביב/ברודצקי", "city": "תל אביב יפו", "lat": 32.112531, "lon": 34.797662, "trips": 8, "med": 10.8, "lines": "45 (דן)", "matches": []}, {"id": 13210, "name": "ביה''ס אליאנס/רדינג", "city": "תל אביב יפו", "lat": 32.10653, "lon": 34.794161, "trips": 8, "med": 8.2, "lines": "45 (דן)", "matches": [{"b": "סמינר הקיבוצים/דרך נמיר", "lat": 32.103962, "lon": 34.792661, "lines": "606 (מטרופולין), 608 (מטרופולין), 615 (מטרופולין)", "med": 25.9, "trips": 15, "dist": 319.0}]}, {"id": 13213, "name": "רדינג/אשר ברש", "city": "תל אביב יפו", "lat": 32.1097, "lon": 34.796267, "trips": 8, "med": 9.0, "lines": "45 (דן)", "matches": []}, {"id": 13358, "name": "סמינר הקיבוצים/דרך נמיר", "city": "תל אביב יפו", "lat": 32.101886, "lon": 34.792779, "trips": 14, "med": 6.7, "lines": "45 (דן), 68 (מטרופולין)", "matches": [{"b": "סמינר הקיבוצים/דרך נמיר", "lat": 32.103962, "lon": 34.792661, "lines": "606 (מטרופולין), 608 (מטרופולין), 615 (מטרופולין)", "med": 25.9, "trips": 15, "dist": 231.0}]}, {"id": 13659, "name": "דיזנגוף/ארלוזורוב", "city": "תל אביב יפו", "lat": 32.086259, "lon": 34.774822, "trips": 8, "med": 11.1, "lines": "128 (דן)", "matches": []}, {"id": 13701, "name": "אבן גבירול/שד' רוקח", "city": "תל אביב יפו", "lat": 32.09938, "lon": 34.782769, "trips": 7, "med": 10.1, "lines": "68 (מטרופולין)", "matches": [{"b": "ספורטק/שד' רוקח", "lat": 32.09861, "lon": 34.78494, "lines": "608 (מטרופולין)", "med": 29.3, "trips": 7, "dist": 222.0}]}, {"id": 13703, "name": "ש''י עגנון/אבן גבירול", "city": "תל אביב יפו", "lat": 32.101969, "lon": 34.782974, "trips": 7, "med": 9.5, "lines": "68 (מטרופולין)", "matches": []}, {"id": 13708, "name": "גימנסיה הרצליה/ז'בוטינסקי", "city": "תל אביב יפו", "lat": 32.087558, "lon": 34.784929, "trips": 12, "med": 8.0, "lines": "66 (דן)", "matches": [{"b": "אבן גבירול/ז'בוטינסקי", "lat": 32.08874, "lon": 34.782552, "lines": "608 (מטרופולין)", "med": 32.8, "trips": 6, "dist": 260.0}]}, {"id": 13716, "name": "פנקס/רמז", "city": "תל אביב יפו", "lat": 32.090827, "lon": 34.786229, "trips": 13, "med": 6.2, "lines": "21 (מטרופולין), 128 (דן)", "matches": []}, {"id": 13739, "name": "ש''י עגנון/שד' לוי אשכול", "city": "תל אביב יפו", "lat": 32.102523, "lon": 34.786844, "trips": 7, "med": 8.6, "lines": "68 (מטרופולין)", "matches": []}, {"id": 13808, "name": "המאבק/כ''ג", "city": "גבעתיים", "lat": 32.062575, "lon": 34.810416, "trips": 10, "med": 14.9, "lines": "45 (דן)", "matches": []}, {"id": 13824, "name": "תלמה ילין/בורוכוב", "city": "גבעתיים", "lat": 32.077945, "lon": 34.802974, "trips": 8, "med": 9.2, "lines": "58 (דן)", "matches": []}, {"id": 13826, "name": "קק''ל/גורדון", "city": "גבעתיים", "lat": 32.076479, "lon": 34.806395, "trips": 8, "med": 10.7, "lines": "58 (דן)", "matches": []}, {"id": 13836, "name": "גן הזיכרון/כצנלסון", "city": "גבעתיים", "lat": 32.075625, "lon": 34.810752, "trips": 10, "med": 9.9, "lines": "45 (דן)", "matches": []}, {"id": 13837, "name": "גורדון/המעורר", "city": "גבעתיים", "lat": 32.07657, "lon": 34.808117, "trips": 8, "med": 11.4, "lines": "58 (דן)", "matches": []}, {"id": 13843, "name": "קריניצי/ביאליק", "city": "רמת גן", "lat": 32.079296, "lon": 34.815753, "trips": 9, "med": 6.9, "lines": "45 (דן)", "matches": []}, {"id": 13925, "name": "ביאליק/דרך ז'בוטינסקי", "city": "רמת גן", "lat": 32.086026, "lon": 34.810245, "trips": 37, "med": 1.8, "lines": "45 (דן), 68 (מטרופולין), 66 (דן)", "matches": []}, {"id": 13935, "name": "דרך אבא הלל/רוקח", "city": "רמת גן", "lat": 32.088894, "lon": 34.808172, "trips": 6, "med": 1.4, "lines": "21 (מטרופולין)", "matches": []}, {"id": 13937, "name": "דרך אבא הלל/התקווה", "city": "רמת גן", "lat": 32.090769, "lon": 34.811475, "trips": 6, "med": 2.8, "lines": "21 (מטרופולין)", "matches": []}, {"id": 13958, "name": "דרך אבא הלל/רש''י", "city": "רמת גן", "lat": 32.0931, "lon": 34.816503, "trips": 6, "med": 4.0, "lines": "21 (מטרופולין)", "matches": []}, {"id": 14077, "name": "מחלף גהה/דרך ז'בוטינסקי", "city": "בני ברק", "lat": 32.092621, "lon": 34.843838, "trips": 27, "med": 11.2, "lines": "68 (מטרופולין), 66 (דן)", "matches": []}, {"id": 14104, "name": "האוניברסיטה/איינשטיין", "city": "תל אביב יפו", "lat": 32.113392, "lon": 34.800488, "trips": 8, "med": 11.5, "lines": "45 (דן)", "matches": []}, {"id": 14193, "name": "דבורה הנביאה/ראול ולנברג", "city": "תל אביב יפו", "lat": 32.115365, "lon": 34.839416, "trips": 6, "med": 14.0, "lines": "21 (מטרופולין)", "matches": [{"b": "ראול ולנברג/הארד", "lat": 32.112816, "lon": 34.839688, "lines": "616 (מטרופולין)", "med": 40.1, "trips": 1, "dist": 285.0}]}, {"id": 14509, "name": "דרך אבא הלל/היצירה", "city": "רמת גן", "lat": 32.084842, "lon": 34.803956, "trips": 8, "med": 2.1, "lines": "58 (דן)", "matches": []}, {"id": 43651, "name": "בית החייל/פנקס", "city": "תל אביב יפו", "lat": 32.090955, "lon": 34.791056, "trips": 13, "med": 4.4, "lines": "21 (מטרופולין), 128 (דן)", "matches": []}, {"id": 45041, "name": "אבן גבירול/ז'בוטינסקי", "city": "תל אביב יפו", "lat": 32.08874, "lon": 34.782552, "trips": 6, "med": 7.4, "lines": "21 (מטרופולין)", "matches": [{"b": "אבן גבירול/ז'בוטינסקי", "lat": 32.08874, "lon": 34.782552, "lines": "608 (מטרופולין)", "med": 32.8, "trips": 6, "dist": 0.0}]}, {"id": 29311, "name": "זיסמן/דרך בגין", "city": "רמת גן", "lat": 32.084015, "lon": 34.800294, "trips": 8, "med": 3.1, "lines": "58 (דן)", "matches": []}, {"id": 41388, "name": "מועדון המרגנית/רוקח", "city": "רמת גן", "lat": 32.095096, "lon": 34.810447, "trips": 6, "med": 5.7, "lines": "58 (דן)", "matches": []}, {"id": 41390, "name": "יואב/רוקח", "city": "רמת גן", "lat": 32.090921, "lon": 34.809136, "trips": 6, "med": 4.5, "lines": "58 (דן)", "matches": []}, {"id": 42272, "name": "עירייה/שיינקין", "city": "גבעתיים", "lat": 32.074682, "lon": 34.809333, "trips": 8, "med": 13.5, "lines": "58 (דן)", "matches": []}, {"id": 42410, "name": "רחובות הנהר/חביבה רייק", "city": "רמת גן", "lat": 32.089478, "lon": 34.806095, "trips": 6, "med": 2.0, "lines": "58 (דן)", "matches": []}, {"id": 42858, "name": "תחנת רכבת סבידור מרכז/גשר מודעי", "city": "רמת גן", "lat": 32.085026, "lon": 34.798515, "trips": 11, "med": 4.4, "lines": "267 (דן), 58 (דן)", "matches": [{"b": "דרך נמיר/ז'בוטינסקי", "lat": 32.086375, "lon": 34.795493, "lines": "606 (מטרופולין)", "med": 30.3, "trips": 8, "dist": 322.0}, {"b": "ת. רכבת תל אביב - סבידור/דרך נמיר", "lat": 32.083482, "lon": 34.795008, "lines": "615 (מטרופולין), 606 (מטרופולין)", "med": 31.1, "trips": 10, "dist": 373.0}]}, {"id": 47406, "name": "כיכר רבין/אבן גבירול", "city": "תל אביב יפו", "lat": 32.079138, "lon": 34.781405, "trips": 6, "med": 11.4, "lines": "21 (מטרופולין)", "matches": [{"b": "כיכר רבין/אבן גבירול", "lat": 32.079138, "lon": 34.781405, "lines": "608 (מטרופולין)", "med": 36.8, "trips": 7, "dist": 0.0}, {"b": "עיריית תל אביב-יפו/אבן גבירול", "lat": 32.082493, "lon": 34.781427, "lines": "608 (מטרופולין)", "med": 35.3, "trips": 7, "dist": 373.0}]}, {"id": 48080, "name": "הסינמטק/קרליבך", "city": "תל אביב יפו", "lat": 32.070473, "lon": 34.782559, "trips": 6, "med": 14.4, "lines": "21 (מטרופולין)", "matches": [{"b": "אליעזר קפלן/דובנוב", "lat": 32.07356, "lon": 34.783258, "lines": "608 (מטרופולין)", "med": 39.0, "trips": 7, "dist": 350.0}]}, {"id": 12844, "name": "ויצמן/צה''ל", "city": "גבעתיים", "lat": 32.07234, "lon": 34.808682, "trips": 10, "med": 11.5, "lines": "45 (דן)", "matches": []}, {"id": 12866, "name": "המאבק/מנורה", "city": "גבעתיים", "lat": 32.06522, "lon": 34.809093, "trips": 10, "med": 13.9, "lines": "45 (דן)", "matches": []}, {"id": 12879, "name": "ערבי נחל/בורוכוב", "city": "גבעתיים", "lat": 32.078281, "lon": 34.801218, "trips": 8, "med": 9.1, "lines": "58 (דן)", "matches": []}, {"id": 12881, "name": "אבן גבירול/פרופ' שור", "city": "תל אביב יפו", "lat": 32.089768, "lon": 34.782735, "trips": 13, "med": 7.2, "lines": "128 (דן), 21 (מטרופולין)", "matches": [{"b": "אבן גבירול/ז'בוטינסקי", "lat": 32.08874, "lon": 34.782552, "lines": "608 (מטרופולין)", "med": 32.8, "trips": 6, "dist": 116.0}]}, {"id": 12910, "name": "דרך נמיר/יהודה המכבי", "city": "תל אביב יפו", "lat": 32.095376, "lon": 34.794137, "trips": 14, "med": 4.9, "lines": "45 (דן), 68 (מטרופולין)", "matches": [{"b": "דרך נמיר/יהודה המכבי", "lat": 32.095157, "lon": 34.794466, "lines": "606 (מטרופולין), 615 (מטרופולין)", "med": 28.6, "trips": 10, "dist": 39.0}, {"b": "דרך נמיר/פנקס", "lat": 32.092013, "lon": 34.795206, "lines": "606 (מטרופולין)", "med": 29.1, "trips": 8, "dist": 388.0}]}, {"id": 12917, "name": "ביאליק/מבוא הרימון", "city": "רמת גן", "lat": 32.08688, "lon": 34.808117, "trips": 37, "med": 1.5, "lines": "66 (דן), 45 (דן), 68 (מטרופולין)", "matches": []}, {"id": 12979, "name": "גבעת שמואל/גשר הולכי רגל", "city": "גבעת שמואל", "lat": 32.082795, "lon": 34.845457, "trips": 8, "med": 13.5, "lines": "68 (מטרופולין)", "matches": []}, {"id": 13026, "name": "ת.רק''ל ביאליק/דרך ז'בוטינסקי", "city": "רמת גן", "lat": 32.087259, "lon": 34.8128, "trips": 36, "med": 2.5, "lines": "45 (דן), 66 (דן), 68 (מטרופולין)", "matches": []}, {"id": 13120, "name": "ת.רק''ל בן גוריון/מכון מור", "city": "בני ברק", "lat": 32.09139, "lon": 34.824447, "trips": 26, "med": 6.3, "lines": "68 (מטרופולין), 66 (דן)", "matches": []}, {"id": 13191, "name": "מחלף גהה", "city": "פתח תקווה", "lat": 32.092033, "lon": 34.847163, "trips": 8, "med": 12.4, "lines": "68 (מטרופולין)", "matches": []}, {"id": 13201, "name": "הרצל/קופת חולים", "city": "רמת גן", "lat": 32.082619, "lon": 34.816128, "trips": 10, "med": 5.4, "lines": "45 (דן)", "matches": []}, {"id": 13203, "name": "קניון איילון/דרך אבא הלל", "city": "רמת גן", "lat": 32.098809, "lon": 34.827472, "trips": 5, "med": 8.0, "lines": "21 (מטרופולין)", "matches": []}, {"id": 13212, "name": "רדינג/הררי", "city": "תל אביב יפו", "lat": 32.104385, "lon": 34.794434, "trips": 8, "med": 7.9, "lines": "45 (דן)", "matches": [{"b": "סמינר הקיבוצים/דרך נמיר", "lat": 32.103962, "lon": 34.792661, "lines": "606 (מטרופולין), 608 (מטרופולין), 615 (מטרופולין)", "med": 25.9, "trips": 15, "dist": 174.0}]}, {"id": 13227, "name": "ז'בוטינסקי/ אבו חצירא", "city": "בני ברק", "lat": 32.092113, "lon": 34.832382, "trips": 27, "med": 8.2, "lines": "66 (דן), 68 (מטרופולין)", "matches": []}, {"id": 13354, "name": "ת. רכבת תל אביב - סבידור/דרך נמיר", "city": "תל אביב יפו", "lat": 32.083482, "lon": 34.795008, "trips": 8, "med": 6.1, "lines": "58 (דן)", "matches": [{"b": "ת. רכבת תל אביב - סבידור/דרך נמיר", "lat": 32.083482, "lon": 34.795008, "lines": "615 (מטרופולין), 606 (מטרופולין)", "med": 31.1, "trips": 10, "dist": 0.0}, {"b": "דרך נמיר/ז'בוטינסקי", "lat": 32.086375, "lon": 34.795493, "lines": "606 (מטרופולין)", "med": 30.3, "trips": 8, "dist": 325.0}]}, {"id": 13565, "name": "כיכר דיזנגוף/ריינס", "city": "תל אביב יפו", "lat": 32.07895, "lon": 34.77495, "trips": 20, "med": 14.9, "lines": "66 (דן), 128 (דן)", "matches": []}, {"id": 13595, "name": "לונדון מיניסטור/אבן גבירול", "city": "תל אביב יפו", "lat": 32.074469, "lon": 34.781836, "trips": 6, "med": 13.1, "lines": "21 (מטרופולין)", "matches": [{"b": "אליעזר קפלן/דובנוב", "lat": 32.07356, "lon": 34.783258, "lines": "608 (מטרופולין)", "med": 39.0, "trips": 7, "dist": 168.0}]}, {"id": 13664, "name": "ריינס/גורדון", "city": "תל אביב יפו", "lat": 32.081909, "lon": 34.775838, "trips": 20, "med": 13.9, "lines": "128 (דן), 66 (דן)", "matches": []}, {"id": 13671, "name": "ביה''ס גרץ/מאנגר", "city": "תל אביב יפו", "lat": 32.08549, "lon": 34.777194, "trips": 12, "med": 12.0, "lines": "66 (דן)", "matches": []}, {"id": 13682, "name": "ז'בוטינסקי/דיזנגוף", "city": "תל אביב יפו", "lat": 32.089066, "lon": 34.776546, "trips": 8, "med": 9.2, "lines": "128 (דן)", "matches": []}, {"id": 13685, "name": "ז'בוטינסקי/ארבע ארצות", "city": "תל אביב יפו", "lat": 32.088678, "lon": 34.778994, "trips": 19, "med": 9.5, "lines": "128 (דן), 66 (דן)", "matches": [{"b": "אבן גבירול/ז'בוטינסקי", "lat": 32.08874, "lon": 34.782552, "lines": "608 (מטרופולין)", "med": 32.8, "trips": 6, "dist": 336.0}]}, {"id": 13692, "name": "ז'בוטינסקי/אבן גבירול", "city": "תל אביב יפו", "lat": 32.088285, "lon": 34.781185, "trips": 19, "med": 9.0, "lines": "128 (דן), 66 (דן)", "matches": [{"b": "אבן גבירול/ז'בוטינסקי", "lat": 32.08874, "lon": 34.782552, "lines": "608 (מטרופולין)", "med": 32.8, "trips": 6, "dist": 139.0}, {"b": "אבן גבירול/ארלוזורוב", "lat": 32.084898, "lon": 34.781789, "lines": "608 (מטרופולין)", "med": 34.6, "trips": 6, "dist": 381.0}]}, {"id": 13721, "name": "בית החייל/ויצמן", "city": "תל אביב יפו", "lat": 32.09063, "lon": 34.790677, "trips": 12, "med": 5.0, "lines": "66 (דן)", "matches": []}, {"id": 13732, "name": "פנקס/דרך נמיר", "city": "תל אביב יפו", "lat": 32.091092, "lon": 34.79436, "trips": 25, "med": 3.9, "lines": "128 (דן), 21 (מטרופולין), 66 (דן)", "matches": [{"b": "דרך נמיר/פנקס", "lat": 32.092013, "lon": 34.795206, "lines": "606 (מטרופולין)", "med": 29.1, "trips": 8, "dist": 130.0}]}, {"id": 13766, "name": "ברודצקי/רדינג", "city": "תל אביב יפו", "lat": 32.110322, "lon": 34.798129, "trips": 8, "med": 9.9, "lines": "45 (דן)", "matches": []}, {"id": 13825, "name": "בורוכוב/קק''ל", "city": "גבעתיים", "lat": 32.078368, "lon": 34.805349, "trips": 8, "med": 10.1, "lines": "58 (דן)", "matches": []}, {"id": 13840, "name": "סירקין/ביאליק", "city": "גבעתיים", "lat": 32.077704, "lon": 34.814717, "trips": 10, "med": 7.9, "lines": "45 (דן)", "matches": []}, {"id": 13934, "name": "הרצל/דרך ז'בוטינסקי", "city": "רמת גן", "lat": 32.087636, "lon": 34.814894, "trips": 10, "med": 3.9, "lines": "45 (דן)", "matches": []}, {"id": 13954, "name": "הרצל/קריניצי", "city": "רמת גן", "lat": 32.081206, "lon": 34.818264, "trips": 10, "med": 5.9, "lines": "45 (דן)", "matches": []}, {"id": 13960, "name": "מוזיאון לאמנות/דרך אבא הלל", "city": "רמת גן", "lat": 32.095279, "lon": 34.819734, "trips": 12, "med": 6.7, "lines": "21 (מטרופולין), 58 (דן)", "matches": []}, {"id": 14081, "name": "ראול ולנברג/הברזל", "city": "תל אביב יפו", "lat": 32.1068, "lon": 34.832216, "trips": 5, "med": 11.8, "lines": "21 (מטרופולין)", "matches": [{"b": "ראול ולנברג/הברזל", "lat": 32.107031, "lon": 34.833789, "lines": "616 (מטרופולין)", "med": 42.0, "trips": 1, "dist": 151.0}, {"b": "ראול ולנברג/משמר הירדן", "lat": 32.106733, "lon": 34.830514, "lines": "616 (מטרופולין)", "med": 43.0, "trips": 1, "dist": 161.0}]}, {"id": 14315, "name": "קניון איילון", "city": "רמת גן", "lat": 32.098936, "lon": 34.825574, "trips": 7, "med": 10.6, "lines": "58 (דן)", "matches": []}, {"id": 14347, "name": "ת.רק''ל אהרונוביץ'/דרך ז'בוטינסקי", "city": "בני ברק", "lat": 32.092819, "lon": 34.83772, "trips": 27, "med": 9.5, "lines": "66 (דן), 68 (מטרופולין)", "matches": []}, {"id": 43652, "name": "כיכר המדינה/אריה עקיבא", "city": "תל אביב יפו", "lat": 32.087673, "lon": 34.790814, "trips": 12, "med": 5.7, "lines": "66 (דן)", "matches": []}, {"id": 44659, "name": "מסוף רדינג/רציפים", "city": "תל אביב יפו", "lat": 32.098781, "lon": 34.779474, "trips": 7, "med": 12.0, "lines": "68 (מטרופולין)", "matches": []}, {"id": 44664, "name": "חניון שפירים מערבי ב", "city": "בית דגן", "lat": 32.002069, "lon": 34.842608, "trips": 25, "med": 13.3, "lines": "802 (יונייטד טורס)", "matches": []}, {"id": 45038, "name": "אבן גבירול/ארלוזורוב", "city": "תל אביב יפו", "lat": 32.084898, "lon": 34.781789, "trips": 6, "med": 9.2, "lines": "21 (מטרופולין)", "matches": [{"b": "אבן גבירול/ארלוזורוב", "lat": 32.084898, "lon": 34.781789, "lines": "608 (מטרופולין)", "med": 34.6, "trips": 6, "dist": 0.0}, {"b": "עיריית תל אביב-יפו/אבן גבירול", "lat": 32.082493, "lon": 34.781427, "lines": "608 (מטרופולין)", "med": 35.3, "trips": 7, "dist": 270.0}]}, {"id": 52015, "name": "אהליאב/ היצירה ", "city": "רמת גן", "lat": 32.087443, "lon": 34.802415, "trips": 3, "med": 1.2, "lines": "267 (דן)", "matches": []}, {"id": 52234, "name": "חנה וסע שפיים/איסוף שאטלים", "city": "שפיים", "lat": 32.213008, "lon": 34.835124, "trips": 25, "med": 15.0, "lines": "812 (דן נתיבים בעמ)", "matches": []}, {"id": 52542, "name": "חנה וסע ראשל''צ/איסוף שאטלים", "city": "ראשון לציון", "lat": 31.969304, "lon": 34.75481, "trips": 25, "med": 15.0, "lines": "862 (דן נתיבים בעמ)", "matches": []}, {"id": 52554, "name": "הרב שלמה גורן/פנחס ספיר", "city": "תל אביב יפו", "lat": 32.090314, "lon": 34.799009, "trips": 41, "med": 2.4, "lines": "21 (מטרופולין), 66 (דן), 68 (מטרופולין), 128 (דן), 45 (דן)", "matches": []}, {"id": 16195, "name": "ז'בוטינסקי/הסיבים", "city": "פתח תקווה", "lat": 32.092536, "lon": 34.856645, "trips": 18, "med": 14.5, "lines": "66 (דן)", "matches": []}, {"id": 16196, "name": "ת.רק''ל שנקר/דרך ז'בוטינסקי", "city": "פתח תקווה", "lat": 32.09285, "lon": 34.852891, "trips": 18, "med": 13.5, "lines": "66 (דן)", "matches": []}, {"id": 24779, "name": "מחלף גהה/ז'בוטינסקי", "city": "פתח תקווה", "lat": 32.092717, "lon": 34.848705, "trips": 18, "med": 12.5, "lines": "66 (דן)", "matches": []}, {"id": 29588, "name": "ביה''ס לרפואה/קלצ'קין", "city": "תל אביב יפו", "lat": 32.117552, "lon": 34.805965, "trips": 8, "med": 14.9, "lines": "45 (דן)", "matches": [{"b": "אפקה/שד' קק''ל", "lat": 32.120097, "lon": 34.807805, "lines": "616 (מטרופולין)", "med": 28.0, "trips": 2, "dist": 332.0}]}, {"id": 38940, "name": "דרך ז'בוטינסקי/הרצל", "city": "רמת גן", "lat": 32.089, "lon": 34.816021, "trips": 26, "med": 3.5, "lines": "66 (דן), 68 (מטרופולין)", "matches": []}, {"id": 38944, "name": "גשר דוד שיפמן /דרך מנחם בגין", "city": "גבעתיים", "lat": 32.080374, "lon": 34.797778, "trips": 8, "med": 7.3, "lines": "58 (דן)", "matches": []}, {"id": 41383, "name": "ספיבק/רוקח", "city": "רמת גן", "lat": 32.09623, "lon": 34.81805, "trips": 6, "med": 7.6, "lines": "58 (דן)", "matches": []}, {"id": 41385, "name": "רוקח/רקפת", "city": "רמת גן", "lat": 32.095871, "lon": 34.81454, "trips": 6, "med": 6.7, "lines": "58 (דן)", "matches": []}, {"id": 42276, "name": "בית ספר גורדון/הכנסת", "city": "גבעתיים", "lat": 32.074201, "lon": 34.81253, "trips": 8, "med": 15.0, "lines": "58 (דן)", "matches": []}, {"id": 42409, "name": "איתמר/יואב", "city": "רמת גן", "lat": 32.08949, "lon": 34.80698, "trips": 6, "med": 3.4, "lines": "58 (דן)", "matches": []}, {"id": 51271, "name": "ראול ולנברג/דבורה הנביאה", "city": "תל אביב יפו", "lat": 32.114058, "lon": 34.840255, "trips": 6, "med": 13.9, "lines": "21 (מטרופולין)", "matches": [{"b": "ראול ולנברג/הארד", "lat": 32.112816, "lon": 34.839688, "lines": "616 (מטרופולין)", "med": 40.1, "trips": 1, "dist": 148.0}]}];
+const W = [{"id": 12932, "name": "קריית הממשלה/דרך מנחם בגין", "city": "תל אביב יפו", "lat": 32.070648, "lon": 34.78884, "trips": 17, "med": 35.6, "lines": "615 (מטרופולין), 608 (מטרופולין), 606 (מטרופולין)"}, {"id": 12943, "name": "שד' קק''ל/שלמה בן יוסף", "city": "תל אביב יפו", "lat": 32.122078, "lon": 34.798889, "trips": 2, "med": 25.8, "lines": "616 (מטרופולין)"}, {"id": 13088, "name": "ת. רכבת בני ברק/מבצע קדש", "city": "בני ברק", "lat": 32.103514, "lon": 34.827868, "trips": 1, "med": 44.4, "lines": "616 (מטרופולין)"}, {"id": 13154, "name": "דרך נמיר/ז'בוטינסקי", "city": "תל אביב יפו", "lat": 32.086375, "lon": 34.795493, "trips": 8, "med": 30.3, "lines": "606 (מטרופולין)"}, {"id": 13236, "name": "שד' קק''ל/בני אפרים", "city": "תל אביב יפו", "lat": 32.118763, "lon": 34.817443, "trips": 2, "med": 31.0, "lines": "616 (מטרופולין)"}, {"id": 13354, "name": "ת. רכבת תל אביב - סבידור/דרך נמיר", "city": "תל אביב יפו", "lat": 32.083482, "lon": 34.795008, "trips": 10, "med": 31.1, "lines": "615 (מטרופולין), 606 (מטרופולין)"}, {"id": 13740, "name": "ספורטק/שד' רוקח", "city": "תל אביב יפו", "lat": 32.09861, "lon": 34.78494, "trips": 7, "med": 29.3, "lines": "608 (מטרופולין)"}, {"id": 14140, "name": "שלונסקי/בני אפרים", "city": "תל אביב יפו", "lat": 32.117871, "lon": 34.819709, "trips": 2, "med": 32.0, "lines": "616 (מטרופולין)"}, {"id": 23298, "name": "ת. רכבת קרית אריה", "city": "פתח תקווה", "lat": 32.106362, "lon": 34.863805, "trips": 1, "med": 53.0, "lines": "616 (מטרופולין)"}, {"id": 23359, "name": "דרך שלמה שמלצר/השפלה", "city": "פתח תקווה", "lat": 32.101221, "lon": 34.857075, "trips": 1, "med": 50.2, "lines": "616 (מטרופולין)"}, {"id": 29521, "name": "אפקה/שד' קק''ל", "city": "תל אביב יפו", "lat": 32.120097, "lon": 34.807805, "trips": 2, "med": 28.0, "lines": "616 (מטרופולין)"}, {"id": 37675, "name": "ת.מרכזית תל אביב קומה 6/רציפים", "city": "תל אביב יפו", "lat": 32.055908, "lon": 34.779085, "trips": 10, "med": 49.8, "lines": "608 (מטרופולין), 615 (מטרופולין)"}, {"id": 45038, "name": "אבן גבירול/ארלוזורוב", "city": "תל אביב יפו", "lat": 32.084898, "lon": 34.781789, "trips": 6, "med": 34.6, "lines": "608 (מטרופולין)"}, {"id": 12878, "name": "עיריית תל אביב-יפו/אבן גבירול", "city": "תל אביב יפו", "lat": 32.082493, "lon": 34.781427, "trips": 7, "med": 35.3, "lines": "608 (מטרופולין)"}, {"id": 13030, "name": "ראול ולנברג/משמר הירדן", "city": "תל אביב יפו", "lat": 32.106733, "lon": 34.830514, "trips": 1, "med": 43.0, "lines": "616 (מטרופולין)"}, {"id": 13067, "name": "דרך נמיר/יהודה המכבי", "city": "תל אביב יפו", "lat": 32.095157, "lon": 34.794466, "trips": 10, "med": 28.6, "lines": "606 (מטרופולין), 615 (מטרופולין)"}, {"id": 13134, "name": "דרך נמיר/שד' קק''ל", "city": "תל אביב יפו", "lat": 32.123132, "lon": 34.794667, "trips": 14, "med": 22.5, "lines": "608 (מטרופולין), 606 (מטרופולין)"}, {"id": 13181, "name": "דרך נמיר/פנקס", "city": "תל אביב יפו", "lat": 32.092013, "lon": 34.795206, "trips": 8, "med": 29.1, "lines": "606 (מטרופולין)"}, {"id": 13204, "name": "קניון עזריאלי/דרך מנחם בגין", "city": "תל אביב יפו", "lat": 32.075726, "lon": 34.791623, "trips": 10, "med": 33.2, "lines": "615 (מטרופולין), 606 (מטרופולין)"}, {"id": 13241, "name": "ראול ולנברג/הברזל", "city": "תל אביב יפו", "lat": 32.107031, "lon": 34.833789, "trips": 1, "med": 42.0, "lines": "616 (מטרופולין)"}, {"id": 13243, "name": "ראול ולנברג/הנחושת", "city": "תל אביב יפו", "lat": 32.1097, "lon": 34.837166, "trips": 1, "med": 41.3, "lines": "616 (מטרופולין)"}, {"id": 13244, "name": "ראול ולנברג/הארד", "city": "תל אביב יפו", "lat": 32.112816, "lon": 34.839688, "trips": 1, "med": 40.1, "lines": "616 (מטרופולין)"}, {"id": 13318, "name": "כיכר מילאנו/אבן גבירול", "city": "תל אביב יפו", "lat": 32.09434, "lon": 34.783627, "trips": 6, "med": 30.8, "lines": "608 (מטרופולין)"}, {"id": 13322, "name": "המסגר/ישראל טל", "city": "תל אביב יפו", "lat": 32.063805, "lon": 34.785694, "trips": 17, "med": 37.4, "lines": "608 (מטרופולין), 615 (מטרופולין), 606 (מטרופולין)"}, {"id": 14189, "name": "דבורה הנביאה/משמר הירדן", "city": "תל אביב יפו", "lat": 32.11891, "lon": 34.834075, "trips": 2, "med": 37.0, "lines": "616 (מטרופולין)"}, {"id": 14549, "name": "מתחם שרונה/אליעזר קפלן", "city": "תל אביב יפו", "lat": 32.073491, "lon": 34.787018, "trips": 7, "med": 40.6, "lines": "608 (מטרופולין)"}, {"id": 14576, "name": "דרך אם המושבות/המכבים", "city": "בני ברק", "lat": 32.100277, "lon": 34.832926, "trips": 1, "med": 47.0, "lines": "616 (מטרופולין)"}, {"id": 23299, "name": "ת. רכבת קרית אריה", "city": "פתח תקווה", "lat": 32.105041, "lon": 34.863442, "trips": 1, "med": 52.0, "lines": "616 (מטרופולין)"}, {"id": 29322, "name": "המסגר/התעשייה", "city": "תל אביב יפו", "lat": 32.066996, "lon": 34.786971, "trips": 8, "med": 36.6, "lines": "606 (מטרופולין)"}, {"id": 29339, "name": "סמינר הקיבוצים/דרך נמיר", "city": "תל אביב יפו", "lat": 32.103962, "lon": 34.792661, "trips": 15, "med": 25.9, "lines": "606 (מטרופולין), 608 (מטרופולין), 615 (מטרופולין)"}, {"id": 29340, "name": "דרך נמיר/אינשטיין", "city": "תל אביב יפו", "lat": 32.113247, "lon": 34.792778, "trips": 15, "med": 24.3, "lines": "608 (מטרופולין), 615 (מטרופולין), 606 (מטרופולין)"}, {"id": 29464, "name": "פנחס רוזן/דבורה הנביאה", "city": "תל אביב יפו", "lat": 32.118401, "lon": 34.825268, "trips": 2, "med": 34.4, "lines": "616 (מטרופולין)"}, {"id": 37690, "name": "ת.מרכזית תל אביב קומה 6/רציפים", "city": "תל אביב יפו", "lat": 32.055908, "lon": 34.779085, "trips": 9, "med": 42.6, "lines": "606 (מטרופולין)"}, {"id": 42859, "name": "אליעזר קפלן/דובנוב", "city": "תל אביב יפו", "lat": 32.07356, "lon": 34.783258, "trips": 7, "med": 39.0, "lines": "608 (מטרופולין)"}, {"id": 45041, "name": "אבן גבירול/ז'בוטינסקי", "city": "תל אביב יפו", "lat": 32.08874, "lon": 34.782552, "trips": 6, "med": 32.8, "lines": "608 (מטרופולין)"}, {"id": 47406, "name": "כיכר רבין/אבן גבירול", "city": "תל אביב יפו", "lat": 32.079138, "lon": 34.781405, "trips": 7, "med": 36.8, "lines": "608 (מטרופולין)"}, {"id": 48645, "name": "דרך שלמה שמלצר/גרניט", "city": "פתח תקווה", "lat": 32.102579, "lon": 34.863565, "trips": 1, "med": 51.1, "lines": "616 (מטרופולין)"}, {"id": 40538, "name": "דרך שלמה שמלצר/מרטין גהל", "city": "פתח תקווה", "lat": 32.100294, "lon": 34.850965, "trips": 1, "med": 49.9, "lines": "616 (מטרופולין)"}];
+const SHENKAR = { lat: 32.0884, lon: 34.8046 };
+const WORKDEST = { lat: 32.29105, lon: 34.86494 };
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const isExact = d => d.matches.some(m => m.dist === 0);
+const isLinked = d => d.matches.length > 0;
+const colorOf = d => isExact(d) ? css('--exact') : isLinked(d) ? css('--link') : css('--reach');
+const gm = (lat, lon) => 'https://www.google.com/maps?q=' + lat + ',' + lon;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let selected = null;
+
+const map = L.map('map', { minZoom: 11, maxZoom: 17, zoomSnap: 0.5, attributionControl: true,
+  maxBounds: [[31.95, 34.65], [32.4, 35.0]] });
+// tiles ship with the page; beyond z15 Leaflet upscales the z15 tiles
+L.tileLayer('tiles/{z}/{x}/{y}.png', { minZoom: 11, maxZoom: 17, maxNativeZoom: 15,
+  attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' }).addTo(map);
+map.attributionControl.setPrefix(false);
+
+const workLayer = L.layerGroup().addTo(map);
+const stopLayer = L.layerGroup().addTo(map);
+const selLayer = L.layerGroup().addTo(map);
+
+W.forEach(w => {
+  L.circleMarker([w.lat, w.lon], { radius: 6, color: css('--work'), weight: 2, fill: false })
+    .bindTooltip(esc(w.name) + '<br>לעבודה: ' + esc(w.lines) + ', כ-' + Math.round(w.med) + ' דק\'', { direction: 'top' })
+    .addTo(workLayer);
+});
+
+function sq(lat, lon, label) {
+  return L.marker([lat, lon], { keyboard: false, icon: L.divIcon({ className: '', iconSize: [16, 16],
+    html: '<div style="width:16px;height:16px;border-radius:2px;background:' + css('--work') + ';border:2px solid ' + css('--surface') + ';box-sizing:border-box"></div>' }) })
+    .bindTooltip(label, { permanent: true, direction: 'top', offset: [0, -8] });
+}
+sq(SHENKAR.lat, SHENKAR.lon, 'שנקר').addTo(map);
+sq(WORKDEST.lat, WORKDEST.lon, 'העבודה, נתניה').addTo(map);
+
+function drawStops() {
+  stopLayer.clearLayers();
+  const onlyLink = document.getElementById('f-link').checked, onlyExact = document.getElementById('f-exact').checked;
+  const shown = D.filter(d => (!onlyLink || isLinked(d)) && (!onlyExact || isExact(d)));
+  // draw plain stops first so linked ones sit on top
+  shown.sort((a, b) => isLinked(a) - isLinked(b) || isExact(a) - isExact(b));
+  shown.forEach(d => {
+    const on = selected === d;
+    const m = L.circleMarker([d.lat, d.lon], { radius: isLinked(d) ? 8 : 5.5, color: on ? css('--fg') : css('--surface'),
+      weight: on ? 3 : 1.5, fillColor: colorOf(d), fillOpacity: 1 })
+      .bindTooltip(esc(d.name), { direction: 'top' })
+      .on('click', () => select(d));
+    m.addTo(stopLayer);
+  });
+  if (document.getElementById('f-work').checked) workLayer.addTo(map); else workLayer.remove();
+}
+
+function drawSelection() {
+  selLayer.clearLayers();
+  const d = selected;
+  if (!d) return;
+  d.matches.filter(m => m.dist > 0).slice(0, 3).forEach(m => {
+    L.polyline([[d.lat, d.lon], [m.lat, m.lon]], { color: css('--link'), weight: 3, dashArray: '4 6', interactive: false }).addTo(selLayer);
+    L.circleMarker([m.lat, m.lon], { radius: 6, color: css('--work'), weight: 3, fillColor: css('--surface'), fillOpacity: 1 })
+      .bindTooltip(esc(m.b) + ' (' + m.dist + ' מ\')', { direction: 'top' }).addTo(selLayer);
+  });
+}
+
+function select(d, fly) {
+  selected = d;
+  drawStops(); drawSelection(); renderPanel();
+  document.querySelectorAll('tr.row').forEach(tr => tr.classList.toggle('on', +tr.dataset.id === d.id));
+  if (fly) map.setView([d.lat, d.lon], Math.max(map.getZoom(), 15));
+}
+
+function renderPanel() {
+  const p = document.getElementById('panel');
+  const d = selected;
+  if (!d) { p.innerHTML = '<p class="pcity">בחר תחנה במפה.</p>'; return; }
+  let h = '<h2 class="pname">' + esc(d.name) + (isExact(d) ? '<span class="tag">אותה תחנה</span>' : '') + '</h2>';
+  h += '<p class="pcity">' + esc(d.city) + '</p>';
+  h += '<div class="block"><h3>לשנקר, ביאליק/תובל</h3><div class="lines">' + esc(d.lines) + '</div>' +
+       '<div class="num">כ-' + Math.round(d.med) + ' דק\' נסיעה, ' + d.trips + ' נסיעות בין 7:00 ל-9:00</div></div>';
+  if (d.matches.length) {
+    d.matches.slice(0, 3).forEach(m => {
+      h += '<div class="block"><h3>לעבודה, ' + (m.dist === 0 ? 'מאותה תחנה' : 'הליכה של ' + m.dist + ' מ\' אל ' + esc(m.b)) + '</h3><div class="lines">' + esc(m.lines) + '</div>' +
+           '<div class="num">כ-' + Math.round(m.med) + ' דק\' נסיעה, ' + m.trips + ' נסיעות</div></div>';
+    });
+  } else {
+    h += '<div class="block"><h3>לעבודה</h3><div>אין קו ישיר להרמלין/המחקר מתחנה זו או מתחנה במרחק של עד 400 מ\'.</div></div>';
+  }
+  h += '<div class="block"><a href="' + gm(d.lat, d.lon) + '" target="_blank" rel="noopener">פתח במפות גוגל</a></div>';
+  p.innerHTML = h;
+}
+
+function renderRows() {
+  const rows = D.filter(isLinked).map(d => ({ d, best: d.matches[0] }));
+  rows.sort((a, b) => (isExact(b.d) - isExact(a.d)) || (a.best.med - b.best.med));
+  const tb = document.getElementById('rows');
+  tb.innerHTML = '';
+  rows.forEach(({ d, best }) => {
+    const tr = document.createElement('tr');
+    tr.className = 'row'; tr.tabIndex = 0; tr.dataset.id = d.id;
+    tr.innerHTML = '<td>' + esc(d.name) + (isExact(d) ? '<span class="tag">אותה תחנה</span>' : '') + '</td><td>' + esc(d.city) + '</td>' +
+      '<td><span class="lines">' + esc(d.lines) + '</span><br><span class="num">כ-' + Math.round(d.med) + ' דק\'</span></td>' +
+      '<td><span class="lines">' + esc(best.lines) + '</span><br><span class="num">כ-' + Math.round(best.med) + ' דק\'</span></td>' +
+      '<td class="num">' + (best.dist === 0 ? 'אין' : best.dist + ' מ\'') + '</td>';
+    tr.addEventListener('click', () => { select(d, true); document.getElementById('map').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+    tr.addEventListener('keydown', e => { if (e.key === 'Enter') select(d, true); });
+    tb.appendChild(tr);
+  });
+}
+
+const cityBounds = L.latLngBounds(D.filter(isLinked).map(d => [d.lat, d.lon]).concat([[SHENKAR.lat, SHENKAR.lon]])).pad(0.15);
+function fitAll() { map.fitBounds(cityBounds); }
+['f-link', 'f-exact', 'f-work'].forEach(id => document.getElementById(id).addEventListener('change', drawStops));
+document.getElementById('fit').addEventListener('click', fitAll);
+// re-color markers when the theme flips
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { drawStops(); drawSelection(); });
+new MutationObserver(() => { drawStops(); drawSelection(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+fitAll();
+renderRows();
+select(D.find(isExact) || D.find(isLinked) || D[0]);
+</script>
